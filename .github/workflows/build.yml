@@ -29,6 +29,7 @@ jobs:
       
       - name: Build Windows EXE
         run: |
+          del "Dev Tool.spec" 2>nul || echo "No spec file"
           pyinstaller --name "Dev Planner" --windowed --onefile --icon=icon.ico --add-data "src;src" main.py
       
       - name: Upload Windows artifact
