@@ -77,22 +77,38 @@ class NodeCanvas(QWidget):
         
         self.connection_overlay = ConnectionOverlay(self)
     
-    def add_node(self, x, y):
+    def add_node(self, x, y, sync_collab=True):
         node = TaskNode(x, y, self)
         self.nodes.append(node)
         self.update_node_position(node)
         self.update()
         if self.main_window:
             self.main_window.schedule_autosave()
+            if sync_collab:
+                self._send_collab_action('create_task', {
+                    'x': x, 'y': y, 
+                    'title': node.title_edit.text(),
+                    'description': node.desc_edit.toPlainText(),
+                    'status': node.status
+                })
         return node
     
-    def remove_node(self, node):
+    def remove_node(self, node, sync_collab=True):
+        idx = self.nodes.index(node) if node in self.nodes else -1
         self.connections = [(a, b) for a, b in self.connections if a != node and b != node]
         self.nodes.remove(node)
         node.deleteLater()
         self.update()
         if self.main_window:
             self.main_window.schedule_autosave()
+            if sync_collab and idx >= 0:
+                self._send_collab_action('delete_task', {'index': idx})
+    
+    def _send_collab_action(self, action, payload):
+        if self.main_window and hasattr(self.main_window, 'collab_client'):
+            client = self.main_window.collab_client
+            if client and client.in_room:
+                client.send_task_action(action, payload)
     
     def update_node_position(self, node):
         screen_x = node.node_x * self.scale + self.offset.x()

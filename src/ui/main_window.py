@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QListWidgetItem, QInputDialog, QMessageBox, 
-                             QFileDialog, QSplitter, QScrollArea, QSizePolicy)
+                             QFileDialog, QSplitter, QScrollArea, QSizePolicy, QPushButton)
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from src.core.config import STATUSES
@@ -10,6 +10,12 @@ from src.ui.canvas import NodeCanvas
 from src.ui.ai_chat import AIChatPanel
 
 APP_VERSION = "beta v1.0.0"
+
+try:
+    from src.core.collab import CollabClient, CollabThread
+    COLLAB_AVAILABLE = True
+except ImportError:
+    COLLAB_AVAILABLE = False
 
 
 class MainWindow(QMainWindow):
@@ -24,6 +30,11 @@ class MainWindow(QMainWindow):
         self.autosave_timer = QTimer()
         self.autosave_timer.setSingleShot(True)
         self.autosave_timer.timeout.connect(self.autosave)
+        
+        self.collab_client = None
+        self.collab_code = None
+        if COLLAB_AVAILABLE:
+            self._setup_collab()
         
         self.setStyleSheet("QMainWindow { background-color: #0a0a0a; }")
         
@@ -107,6 +118,19 @@ class MainWindow(QMainWindow):
         clear_btn.setFixedHeight(36)
         clear_btn.clicked.connect(self.clear_all)
         toolbar_layout.addWidget(clear_btn)
+        
+        sep_collab = QLabel("|")
+        sep_collab.setStyleSheet("color: #333333; font-size: 16px;")
+        toolbar_layout.addWidget(sep_collab)
+        
+        self.collab_btn = ModernButton("Пригласить", "#00ff9d")
+        self.collab_btn.setFixedHeight(36)
+        self.collab_btn.clicked.connect(self._show_collab_menu)
+        toolbar_layout.addWidget(self.collab_btn)
+        
+        self.collab_status = QLabel("")
+        self.collab_status.setStyleSheet("color: #00ff9d; font-size: 10px;")
+        toolbar_layout.addWidget(self.collab_status)
         
         toolbar_layout.addStretch()
         
@@ -555,4 +579,174 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         self.save_current_project()
+        if self.collab_client:
+            self.collab_client.disconnect_from_server()
         event.accept()
+    
+    def _setup_collab(self):
+        self.collab_client = CollabClient()
+        self.collab_client.connected.connect(self._on_collab_connected)
+        self.collab_client.disconnected.connect(self._on_collab_disconnected)
+        self.collab_client.room_created.connect(self._on_room_created)
+        self.collab_client.room_joined.connect(self._on_room_joined)
+        self.collab_client.join_failed.connect(self._on_join_failed)
+        self.collab_client.members_updated.connect(self._on_members_updated)
+        self.collab_client.project_updated.connect(self._on_project_updated)
+        self.collab_client.task_action_received.connect(self._on_task_action_received)
+        self.collab_client.room_closed.connect(self._on_room_closed)
+        self.collab_client.error_occurred.connect(self._on_collab_error)
+    
+    def _show_collab_menu(self):
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu { background-color: #1a1a1a; border: 1px solid #333333; border-radius: 5px; padding: 5px; }
+            QMenu::item { color: #ffffff; padding: 8px 20px; border-radius: 3px; }
+            QMenu::item:selected { background-color: #333333; }
+        """)
+        
+        if self.collab_client and self.collab_client.in_room:
+            if self.collab_code:
+                code_action = menu.addAction(f"Код: {self.collab_code}")
+                code_action.setEnabled(False)
+            menu.addSeparator()
+            leave_action = menu.addAction("Покинуть комнату")
+            leave_action.triggered.connect(self._leave_collab_room)
+            if self.collab_client.is_host:
+                menu.addSeparator()
+                close_action = menu.addAction("Закрыть комнату")
+                close_action.triggered.connect(self._close_collab_room)
+        else:
+            create_action = menu.addAction("Создать комнату")
+            create_action.triggered.connect(self._create_collab_room)
+            join_action = menu.addAction("Присоединиться")
+            join_action.triggered.connect(self._join_collab_room)
+        
+        menu.exec(self.collab_btn.mapToGlobal(self.collab_btn.rect().bottomLeft()))
+    
+    def _create_collab_room(self):
+        if not COLLAB_AVAILABLE:
+            QMessageBox.warning(self, "Ошибка", "Модуль коллаборации недоступен")
+            return
+        
+        name, ok = QInputDialog.getText(self, "Создать комнату", "Ваше имя:")
+        if ok and name:
+            project_data = self.canvas.get_project_data()
+            self.collab_thread = CollabThread(self.collab_client, 'create_room', 
+                                              name=name, project_data=project_data)
+            self.collab_thread.start()
+    
+    def _join_collab_room(self):
+        if not COLLAB_AVAILABLE:
+            QMessageBox.warning(self, "Ошибка", "Модуль коллаборации недоступен")
+            return
+        
+        code, ok = QInputDialog.getText(self, "Присоединиться", "Введите код комнаты:")
+        if ok and code:
+            name, ok2 = QInputDialog.getText(self, "Присоединиться", "Ваше имя:")
+            if ok2 and name:
+                self.collab_thread = CollabThread(self.collab_client, 'join_room',
+                                                  code=code, name=name)
+                self.collab_thread.start()
+    
+    def _leave_collab_room(self):
+        if self.collab_client:
+            self.collab_thread = CollabThread(self.collab_client, 'leave_room')
+            self.collab_thread.start()
+            self.collab_code = None
+            self.collab_status.setText("")
+            self.collab_btn.setText("Пригласить")
+    
+    def _on_collab_connected(self):
+        pass
+    
+    def _on_collab_disconnected(self):
+        self.collab_code = None
+        self.collab_status.setText("")
+        self.collab_btn.setText("Пригласить")
+    
+    def _on_room_created(self, room_id, code):
+        self.collab_code = code
+        self.collab_status.setText(f"● Комната: {code}")
+        self.collab_btn.setText("Комната")
+        QMessageBox.information(self, "Комната создана", 
+                               f"Код для приглашения:\n\n{code}\n\nПоделитесь этим кодом с другими участниками")
+    
+    def _on_room_joined(self, room_id, project_data, members):
+        self.collab_code = None
+        self.collab_status.setText(f"● Подключено ({len(members)})")
+        self.collab_btn.setText("Комната")
+        if project_data:
+            self.canvas.load_project_data(project_data)
+            self.update_stats()
+    
+    def _on_join_failed(self, message):
+        QMessageBox.warning(self, "Ошибка", f"Не удалось присоединиться: {message}")
+    
+    def _on_members_updated(self, members):
+        self.collab_status.setText(f"● Подключено ({len(members)})")
+    
+    def _on_project_updated(self, project_data):
+        if project_data:
+            self.canvas.load_project_data(project_data)
+            self.update_stats()
+    
+    def _on_task_action_received(self, action, payload, from_id):
+        if action == 'create_task':
+            node = self.canvas.add_node(payload.get('x', 100), payload.get('y', 100))
+            node.title_edit.setText(payload.get('title', 'Задача'))
+            node.desc_edit.setPlainText(payload.get('description', ''))
+            if payload.get('status') in STATUSES:
+                node.set_status(payload.get('status'))
+        elif action == 'delete_task':
+            idx = payload.get('index', -1)
+            if 0 <= idx < len(self.canvas.nodes):
+                self.canvas.remove_node(self.canvas.nodes[idx])
+        elif action == 'update_task':
+            idx = payload.get('index', -1)
+            if 0 <= idx < len(self.canvas.nodes):
+                node = self.canvas.nodes[idx]
+                if 'title' in payload:
+                    node.title_edit.setText(payload['title'])
+                if 'description' in payload:
+                    node.desc_edit.setPlainText(payload['description'])
+                if 'status' in payload and payload['status'] in STATUSES:
+                    node.set_status(payload['status'])
+                if 'x' in payload and 'y' in payload:
+                    node.node_x = payload['x']
+                    node.node_y = payload['y']
+                    self.canvas.update_node_position(node)
+        elif action == 'connect_tasks':
+            from_idx = payload.get('from', -1)
+            to_idx = payload.get('to', -1)
+            if 0 <= from_idx < len(self.canvas.nodes) and 0 <= to_idx < len(self.canvas.nodes):
+                from_node = self.canvas.nodes[from_idx]
+                to_node = self.canvas.nodes[to_idx]
+                if (from_node, to_node) not in self.canvas.connections:
+                    self.canvas.connections.append((from_node, to_node))
+                    self.canvas.connection_overlay.update()
+        elif action == 'full_sync':
+            if payload.get('projectData'):
+                self.canvas.load_project_data(payload['projectData'])
+        self.update_stats()
+    
+    def _on_room_closed(self, message):
+        self.collab_code = None
+        self.collab_status.setText("")
+        self.collab_btn.setText("Пригласить")
+        QMessageBox.information(self, "Комната закрыта", message)
+    
+    def _close_collab_room(self):
+        if self.collab_client and self.collab_client.is_host:
+            reply = QMessageBox.question(self, "Закрыть комнату", 
+                                         "Закрыть комнату для всех участников?",
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
+                self.collab_thread = CollabThread(self.collab_client, 'close_room')
+                self.collab_thread.start()
+                self.collab_code = None
+                self.collab_status.setText("")
+                self.collab_btn.setText("Пригласить")
+    
+    def _on_collab_error(self, message):
+        QMessageBox.warning(self, "Ошибка подключения", message)
