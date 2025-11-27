@@ -593,6 +593,8 @@ class MainWindow(QMainWindow):
         self.collab_client.members_updated.connect(self._on_members_updated)
         self.collab_client.project_updated.connect(self._on_project_updated)
         self.collab_client.task_action_received.connect(self._on_task_action_received)
+        self.collab_client.cursor_updated.connect(self._on_cursor_updated)
+        self.collab_client.user_left.connect(self._on_user_left)
         self.collab_client.room_closed.connect(self._on_room_closed)
         self.collab_client.error_occurred.connect(self._on_collab_error)
     
@@ -656,6 +658,7 @@ class MainWindow(QMainWindow):
             self.collab_code = None
             self.collab_status.setText("")
             self.collab_btn.setText("Пригласить")
+            self.canvas.clear_remote_cursors()
     
     def _on_collab_connected(self):
         pass
@@ -691,9 +694,15 @@ class MainWindow(QMainWindow):
             self.canvas.load_project_data(project_data)
             self.update_stats()
     
+    def _on_cursor_updated(self, user_id, x, y, name):
+        self.canvas.update_remote_cursor(user_id, x, y, name)
+    
+    def _on_user_left(self, user_id):
+        self.canvas.remove_remote_cursor(user_id)
+    
     def _on_task_action_received(self, action, payload, from_id):
         if action == 'create_task':
-            node = self.canvas.add_node(payload.get('x', 100), payload.get('y', 100))
+            node = self.canvas.add_node_silent(payload.get('x', 100), payload.get('y', 100))
             node.title_edit.setText(payload.get('title', 'Задача'))
             node.desc_edit.setPlainText(payload.get('description', ''))
             if payload.get('status') in STATUSES:
@@ -701,7 +710,7 @@ class MainWindow(QMainWindow):
         elif action == 'delete_task':
             idx = payload.get('index', -1)
             if 0 <= idx < len(self.canvas.nodes):
-                self.canvas.remove_node(self.canvas.nodes[idx])
+                self.canvas.remove_node_silent(self.canvas.nodes[idx])
         elif action == 'update_task':
             idx = payload.get('index', -1)
             if 0 <= idx < len(self.canvas.nodes):
@@ -721,7 +730,7 @@ class MainWindow(QMainWindow):
             to_idx = payload.get('to', -1)
             if 0 <= from_idx < len(self.canvas.nodes) and 0 <= to_idx < len(self.canvas.nodes):
                 from_node = self.canvas.nodes[from_idx]
-                to_node = self.canvas.nodes[to_idx]
+                to_node = self.canvas.nodes[to_idx]es[to_idx]
                 if (from_node, to_node) not in self.canvas.connections:
                     self.canvas.connections.append((from_node, to_node))
                     self.canvas.connection_overlay.update()
@@ -734,6 +743,7 @@ class MainWindow(QMainWindow):
         self.collab_code = None
         self.collab_status.setText("")
         self.collab_btn.setText("Пригласить")
+        self.canvas.clear_remote_cursors()
         QMessageBox.information(self, "Комната закрыта", message)
     
     def _close_collab_room(self):

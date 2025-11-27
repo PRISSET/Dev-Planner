@@ -5,6 +5,26 @@ from src.core.config import STATUSES
 from src.core.task_node import TaskNode
 
 
+class RemoteCursor(QWidget):
+    def __init__(self, name, color, parent=None):
+        super().__init__(parent)
+        self.name = name
+        self.color = color
+        self.setFixedSize(100, 30)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenType.NoPen)
+        painter.setBrush(QColor(self.color))
+        painter.drawEllipse(0, 0, 12, 12)
+        painter.setPen(QColor(self.color))
+        painter.drawText(16, 10, self.name[:10])
+        painter.end()
+
+
 class ConnectionOverlay(QWidget):
     def __init__(self, canvas):
         super().__init__(canvas)
@@ -53,6 +73,8 @@ class ConnectionOverlay(QWidget):
 
 
 class NodeCanvas(QWidget):
+    CURSOR_COLORS = ["#ff6b6b", "#4ecdc4", "#ffe66d", "#95e1d3", "#f38181", "#aa96da", "#fcbad3", "#a8d8ea"]
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.nodes = []
@@ -67,6 +89,8 @@ class NodeCanvas(QWidget):
         self.hover_target = None
         self.line_dash_offset = 0
         self.line_animation_timer = None
+        self.remote_cursors = {}
+        self.cursor_color_idx = 0
         
         self.setMinimumSize(800, 600)
         self.setMouseTracking(True)
@@ -93,8 +117,17 @@ class NodeCanvas(QWidget):
                 })
         return node
     
+    def add_node_silent(self, x, y):
+        node = TaskNode(x, y, self)
+        self.nodes.append(node)
+        self.update_node_position(node)
+        self.update()
+        return node
+    
     def remove_node(self, node, sync_collab=True):
-        idx = self.nodes.index(node) if node in self.nodes else -1
+        if node not in self.nodes:
+            return
+        idx = self.nodes.index(node)
         self.connections = [(a, b) for a, b in self.connections if a != node and b != node]
         self.nodes.remove(node)
         node.deleteLater()
@@ -103,6 +136,14 @@ class NodeCanvas(QWidget):
             self.main_window.schedule_autosave()
             if sync_collab and idx >= 0:
                 self._send_collab_action('delete_task', {'index': idx})
+    
+    def remove_node_silent(self, node):
+        if node not in self.nodes:
+            return
+        self.connections = [(a, b) for a, b in self.connections if a != node and b != node]
+        self.nodes.remove(node)
+        node.deleteLater()
+        self.update()
     
     def _send_collab_action(self, action, payload):
         if self.main_window and hasattr(self.main_window, 'collab_client'):
@@ -317,6 +358,13 @@ class NodeCanvas(QWidget):
             self.update()
         elif self.connecting_from:
             self.connection_overlay.update()
+        
+        if self.main_window and hasattr(self.main_window, 'collab_client'):
+            client = self.main_window.collab_client
+            if client and client.in_room:
+                canvas_x = (event.position().x() - self.offset.x()) / self.scale
+                canvas_y = (event.position().y() - self.offset.y()) / self.scale
+                client.send_cursor_position(canvas_x, canvas_y)
     
     def mouseReleaseEvent(self, event):
         if event.button() in (Qt.MouseButton.MiddleButton, Qt.MouseButton.LeftButton):
@@ -331,6 +379,29 @@ class NodeCanvas(QWidget):
         self.connections = []
         self.update()
         self.connection_overlay.update()
+    
+    def update_remote_cursor(self, user_id, x, y, name):
+        if user_id not in self.remote_cursors:
+            color = self.CURSOR_COLORS[self.cursor_color_idx % len(self.CURSOR_COLORS)]
+            self.cursor_color_idx += 1
+            cursor = RemoteCursor(name, color, self)
+            self.remote_cursors[user_id] = cursor
+            cursor.show()
+        
+        cursor = self.remote_cursors[user_id]
+        screen_x = x * self.scale + self.offset.x()
+        screen_y = y * self.scale + self.offset.y()
+        cursor.move(int(screen_x), int(screen_y))
+    
+    def remove_remote_cursor(self, user_id):
+        if user_id in self.remote_cursors:
+            self.remote_cursors[user_id].deleteLater()
+            del self.remote_cursors[user_id]
+    
+    def clear_remote_cursors(self):
+        for cursor in self.remote_cursors.values():
+            cursor.deleteLater()
+        self.remote_cursors = {}
     
     def get_stats(self):
         stats = {k: 0 for k in STATUSES.keys()}
