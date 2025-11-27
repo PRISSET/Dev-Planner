@@ -1,4 +1,3 @@
-"""Базовые виджеты приложения"""
 from PyQt6.QtWidgets import QFrame, QPushButton, QListWidget, QMenu
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
@@ -100,7 +99,6 @@ class ProjectListWidget(QListWidget):
 
 
 class CollapsiblePanel(QFrame):
-    """Сворачиваемая панель с плавной анимацией"""
     def __init__(self, title="", parent=None):
         super().__init__(parent)
         self.is_collapsed = False
@@ -125,7 +123,6 @@ class CollapsiblePanel(QFrame):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
         
-        # Кнопка сворачивания
         self.toggle_btn = QPushButton("◀")
         self.toggle_btn.setFixedSize(28, 28)
         self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -142,19 +139,16 @@ class CollapsiblePanel(QFrame):
         """)
         self.toggle_btn.clicked.connect(self.toggle_collapse)
         
-        # Вертикальный заголовок (виден когда свёрнуто)
         self.title_label = QLabel(title)
         self.title_label.setStyleSheet("color: #00ffff; font-size: 10px; font-weight: bold;")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title_label.hide()
         
-        # Контейнер для контента
         self.content_container = QFrame()
         self.content_layout = QVBoxLayout(self.content_container)
         self.content_layout.setContentsMargins(10, 5, 10, 10)
         self.content_layout.setSpacing(8)
         
-        # Header с кнопкой
         header = QHBoxLayout()
         header.setContentsMargins(6, 6, 6, 0)
         header.addWidget(self.title_label)
@@ -165,12 +159,10 @@ class CollapsiblePanel(QFrame):
         self.main_layout.addWidget(self.content_container)
     
     def set_content(self, widget):
-        """Устанавливает содержимое панели"""
         self.content_widget = widget
         self.content_layout.addWidget(widget)
     
     def toggle_collapse(self):
-        """Сворачивает/разворачивает панель с анимацией"""
         from PyQt6.QtCore import QPropertyAnimation, QEasingCurve
         
         self.is_collapsed = not self.is_collapsed
@@ -181,7 +173,6 @@ class CollapsiblePanel(QFrame):
             self.title_label.show()
             self.toggle_btn.setText("▶")
             
-            # Анимация сворачивания
             self._animation = QPropertyAnimation(self, b"minimumWidth")
             self._animation.setDuration(200)
             self._animation.setStartValue(self.expanded_width)
@@ -193,7 +184,6 @@ class CollapsiblePanel(QFrame):
             self.setMinimumWidth(44)
             self.setMaximumWidth(16777215)
             
-            # Анимация разворачивания
             self._animation = QPropertyAnimation(self, b"minimumWidth")
             self._animation.setDuration(200)
             self._animation.setStartValue(44)

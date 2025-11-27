@@ -7,9 +7,18 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "openai/gpt-4o-mini"
-DEFAULT_API_KEY = "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"
+DEFAULT_MODEL = "openai/gpt-4o-mini"
+DEFAULT_API_KEY = ""
 CONTEXT_DIR = os.path.expanduser("~/.devchain_planner/contexts")
+API_KEY_FILE = os.path.expanduser("~/.devchain_planner/api_key.txt")
+MODELS_FILE = os.path.expanduser("~/.devchain_planner/models.json")
+
+DEFAULT_MODELS = [
+    "openai/gpt-4o-mini",
+    "openai/gpt-4o",
+    "anthropic/claude-3.5-sonnet",
+    "google/gemini-pro-1.5"
+]
 
 SYSTEM_PROMPT = """Ты — AI-исполнитель Dev Planner. Твоя задача — НЕМЕДЛЕННО выполнять команды пользователя.
 
@@ -70,6 +79,35 @@ def ensure_context_dir():
     if not os.path.exists(CONTEXT_DIR):
         os.makedirs(CONTEXT_DIR)
 
+def load_api_key():
+    if os.path.exists(API_KEY_FILE):
+        try:
+            with open(API_KEY_FILE, 'r', encoding='utf-8') as f:
+                return f.read().strip()
+        except:
+            pass
+    return DEFAULT_API_KEY
+
+def save_api_key(api_key):
+    ensure_context_dir()
+    with open(API_KEY_FILE, 'w', encoding='utf-8') as f:
+        f.write(api_key)
+
+def load_models():
+    if os.path.exists(MODELS_FILE):
+        try:
+            with open(MODELS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('models', DEFAULT_MODELS), data.get('selected', DEFAULT_MODEL)
+        except:
+            pass
+    return DEFAULT_MODELS.copy(), DEFAULT_MODEL
+
+def save_models(models, selected):
+    ensure_context_dir()
+    with open(MODELS_FILE, 'w', encoding='utf-8') as f:
+        json.dump({'models': models, 'selected': selected}, f, ensure_ascii=False, indent=2)
+
 def load_context(project_name):
     ensure_context_dir()
     path = os.path.join(CONTEXT_DIR, f"{project_name}.json")
@@ -93,10 +131,11 @@ class AIWorker(QThread):
     response_ready = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
     
-    def __init__(self, api_key, messages):
+    def __init__(self, api_key, messages, model):
         super().__init__()
         self.api_key = api_key
         self.messages = messages
+        self.model = model
     
     def run(self):
         try:
@@ -107,7 +146,7 @@ class AIWorker(QThread):
                 "X-Title": "Dev Planner"
             }
             data = {
-                "model": MODEL,
+                "model": self.model,
                 "messages": self.messages,
                 "max_tokens": 2000
             }
@@ -184,13 +223,57 @@ class AIChatPanel(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.api_key = DEFAULT_API_KEY
+        self.api_key = load_api_key()
+        self.models, self.current_model = load_models()
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         self.worker = None
         self.current_project = None
-        self.task_counter = 0  # Для расположения задач
+        self.task_counter = 0
         
         self._setup_ui()
+    
+    def _setup_api_key(self):
+        from PyQt6.QtWidgets import QInputDialog
+        current_key = self.api_key if self.api_key else ""
+        key, ok = QInputDialog.getText(
+            self, 
+            "API ключ OpenRouter", 
+            "Введите ваш API ключ OpenRouter:\n(получить можно на https://openrouter.ai/keys)",
+            text=current_key
+        )
+        if ok and key.strip():
+            self.api_key = key.strip()
+            save_api_key(self.api_key)
+            self._add_message_ui("API ключ успешно сохранен", is_user=False)
+    
+    def _add_model(self):
+        from PyQt6.QtWidgets import QInputDialog
+        model, ok = QInputDialog.getText(
+            self, 
+            "Добавить модель", 
+            "Введите название модели OpenRouter:\n(например: openai/gpt-4o или anthropic/claude-3-opus)",
+            text=""
+        )
+        if ok and model.strip():
+            model = model.strip()
+            if model not in self.models:
+                self.models.append(model)
+                save_models(self.models, self.current_model)
+                self._update_model_selector()
+                self._add_message_ui(f"Модель {model} добавлена", is_user=False)
+    
+    def _on_model_changed(self, index):
+        if index >= 0 and index < len(self.models):
+            self.current_model = self.models[index]
+            save_models(self.models, self.current_model)
+    
+    def _update_model_selector(self):
+        self.model_selector.clear()
+        for model in self.models:
+            short_name = model.split('/')[-1] if '/' in model else model
+            self.model_selector.addItem(short_name)
+        if self.current_model in self.models:
+            self.model_selector.setCurrentIndex(self.models.index(self.current_model))
     
     def set_project(self, project_name):
         if self.current_project and self.current_project != project_name:
@@ -237,20 +320,59 @@ class AIChatPanel(QWidget):
         header_layout.addWidget(header)
         header_layout.addStretch()
         
-        clear_chat_btn = QPushButton("🗑")
-        clear_chat_btn.setFixedSize(24, 24)
+        api_key_btn = QPushButton("⚙")
+        api_key_btn.setFixedSize(28, 28)
+        api_key_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        api_key_btn.setToolTip("Настроить API ключ")
+        api_key_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #00ffff;
+                border: none;
+                font-size: 16px;
+            }
+            QPushButton:hover {
+                color: #ffffff;
+            }
+        """)
+        api_key_btn.clicked.connect(self._setup_api_key)
+        header_layout.addWidget(api_key_btn)
+        header_layout.addSpacing(4)
+        
+        add_model_btn = QPushButton("＋")
+        add_model_btn.setFixedSize(28, 28)
+        add_model_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_model_btn.setToolTip("Добавить модель")
+        add_model_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #00ff9d;
+                border: none;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                color: #ffffff;
+            }
+        """)
+        add_model_btn.clicked.connect(self._add_model)
+        header_layout.addWidget(add_model_btn)
+        header_layout.addSpacing(4)
+        
+        clear_chat_btn = QPushButton("✕")
+        clear_chat_btn.setFixedSize(28, 28)
         clear_chat_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         clear_chat_btn.setToolTip("Очистить чат")
         clear_chat_btn.setStyleSheet("""
             QPushButton {
-                background: rgba(255, 0, 85, 0.2);
+                background: transparent;
                 color: #ff0055;
-                border: 1px solid rgba(255, 0, 85, 0.3);
-                border-radius: 12px;
-                font-size: 12px;
+                border: none;
+                font-size: 16px;
+                font-weight: bold;
             }
             QPushButton:hover {
-                background: rgba(255, 0, 85, 0.4);
+                color: #ffffff;
             }
         """)
         clear_chat_btn.clicked.connect(self._clear_chat)
@@ -266,6 +388,48 @@ class AIChatPanel(QWidget):
         sep.setFixedHeight(1)
         sep.setStyleSheet("background-color: #333333;")
         layout.addWidget(sep)
+        
+        from PyQt6.QtWidgets import QComboBox
+        model_layout = QHBoxLayout()
+        model_label = QLabel("Модель:")
+        model_label.setStyleSheet("color: #666666; font-size: 10px;")
+        model_layout.addWidget(model_label)
+        
+        self.model_selector = QComboBox()
+        self.model_selector.setStyleSheet("""
+            QComboBox {
+                background: rgba(0,0,0,0.3);
+                color: #00ffff;
+                border: 1px solid #333333;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+            QComboBox:hover {
+                border-color: #00ffff;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid #00ffff;
+                margin-right: 5px;
+            }
+            QComboBox QAbstractItemView {
+                background: #1a1a1a;
+                color: #ffffff;
+                selection-background-color: rgba(0,255,255,0.3);
+                border: 1px solid #333333;
+            }
+        """)
+        self._update_model_selector()
+        self.model_selector.currentIndexChanged.connect(self._on_model_changed)
+        model_layout.addWidget(self.model_selector, 1)
+        layout.addLayout(model_layout)
         
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -379,7 +543,11 @@ class AIChatPanel(QWidget):
 
     def _send_message(self):
         text = self.input_field.text().strip()
-        if not text or not self.api_key:
+        if not text:
+            return
+        
+        if not self.api_key:
+            self._add_message_ui("Ошибка: API ключ не настроен. Нажмите 🔑 для настройки.", is_user=False)
             return
         
         self._add_message_ui(text, is_user=True)
@@ -389,7 +557,7 @@ class AIChatPanel(QWidget):
         self.input_field.setEnabled(False)
         self.send_btn.setEnabled(False)
         
-        self.worker = AIWorker(self.api_key, self.messages.copy())
+        self.worker = AIWorker(self.api_key, self.messages.copy(), self.current_model)
         self.worker.response_ready.connect(self._on_response)
         self.worker.error_occurred.connect(self._on_error)
         self.worker.start()

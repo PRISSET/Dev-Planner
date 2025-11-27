@@ -1,4 +1,3 @@
-"""Канвас для отображения задач"""
 from PyQt6.QtWidgets import QWidget, QGestureEvent, QPinchGesture
 from PyQt6.QtCore import Qt, QPoint, QPointF, QTimer
 from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPen, QBrush, QLinearGradient
@@ -7,7 +6,6 @@ from src.core.task_node import TaskNode
 
 
 class ConnectionOverlay(QWidget):
-    """Прозрачный слой для отрисовки соединений поверх карточек"""
     def __init__(self, canvas):
         super().__init__(canvas)
         self.canvas = canvas
@@ -19,11 +17,9 @@ class ConnectionOverlay(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-        # Соединения
         for node1, node2 in self.canvas.connections:
             self.canvas.draw_connection(painter, node1, node2)
         
-        # Линия при создании соединения
         if self.canvas.connecting_from:
             node = self.canvas.connecting_from
             start = QPointF(
@@ -32,7 +28,6 @@ class ConnectionOverlay(QWidget):
             )
             end = self.canvas.mouse_pos
             
-            # Если есть цель — рисуем к центру карточки
             if self.canvas.hover_target:
                 target = self.canvas.hover_target
                 end = QPointF(
@@ -40,14 +35,12 @@ class ConnectionOverlay(QWidget):
                     target.y() + target.height() / 2
                 )
             
-            # Анимированная пунктирная линия
             pen = QPen(QColor("#00ffff"), 3)
             pen.setStyle(Qt.PenStyle.CustomDashLine)
             pen.setDashPattern([5, 5])
             pen.setDashOffset(self.canvas.line_dash_offset)
             painter.setPen(pen)
             
-            # Кривая Безье
             path = QPainterPath()
             path.moveTo(start)
             ctrl_offset = abs(end.x() - start.x()) / 2
@@ -71,8 +64,8 @@ class NodeCanvas(QWidget):
         self.connecting_from = None
         self.mouse_pos = QPointF()
         self.main_window = None
-        self.hover_target = None  # Карточка под курсором при соединении
-        self.line_dash_offset = 0  # Для анимации пунктирной линии
+        self.hover_target = None
+        self.line_dash_offset = 0
         self.line_animation_timer = None
         
         self.setMinimumSize(800, 600)
@@ -82,7 +75,6 @@ class NodeCanvas(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_AcceptTouchEvents, True)
         self.grabGesture(Qt.GestureType.PinchGesture)
         
-        # Overlay для соединений (поверх карточек)
         self.connection_overlay = ConnectionOverlay(self)
     
     def add_node(self, x, y):
@@ -116,19 +108,16 @@ class NodeCanvas(QWidget):
     def start_connection(self, node):
         self.connecting_from = node
         self.setCursor(Qt.CursorShape.CrossCursor)
-        # Запускаем анимацию линии
         self.line_dash_offset = 0
         self.line_animation_timer = QTimer(self)
         self.line_animation_timer.timeout.connect(self._animate_line)
         self.line_animation_timer.start(50)
     
     def _animate_line(self):
-        """Анимация пунктирной линии"""
         self.line_dash_offset = (self.line_dash_offset + 2) % 20
         self.connection_overlay.update()
     
     def cancel_connection(self):
-        """Отмена соединения"""
         if self.hover_target:
             self.hover_target.set_hover_target(False)
             self.hover_target = None
@@ -146,13 +135,11 @@ class NodeCanvas(QWidget):
                     self.connections.append((self.connecting_from, target_node))
                     if self.main_window:
                         self.main_window.schedule_autosave()
-        # Убираем подсветку
         if self.hover_target:
             self.hover_target.set_hover_target(False)
             self.hover_target = None
         self.connecting_from = None
         self.setCursor(Qt.CursorShape.ArrowCursor)
-        # Останавливаем анимацию
         if self.line_animation_timer:
             self.line_animation_timer.stop()
             self.line_animation_timer = None
@@ -169,7 +156,6 @@ class NodeCanvas(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.fillRect(self.rect(), QColor(10, 10, 10))
         
-        # Сетка
         grid_size = int(50 * self.scale)
         if grid_size > 10:
             painter.setPen(QPen(QColor(30, 30, 30), 1))
@@ -183,7 +169,6 @@ class NodeCanvas(QWidget):
         painter.end()
     
     def draw_connection(self, painter, node1, node2):
-        # Используем реальную позицию и размер виджета на экране
         start = QPointF(
             node1.x() + node1.width() / 2,
             node1.y() + node1.height() / 2
@@ -214,7 +199,6 @@ class NodeCanvas(QWidget):
         angle_delta = event.angleDelta()
         modifiers = event.modifiers()
         
-        # Cmd/Ctrl + scroll = зум
         if modifiers & (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.MetaModifier):
             delta = angle_delta.y()
             if delta != 0:
@@ -223,7 +207,6 @@ class NodeCanvas(QWidget):
             event.accept()
             return
         
-        # Обычный скролл = панорамирование
         if pixel_delta.x() != 0 or pixel_delta.y() != 0:
             self.offset += QPointF(pixel_delta.x(), pixel_delta.y())
         elif angle_delta.x() != 0 or angle_delta.y() != 0:
@@ -239,26 +222,21 @@ class NodeCanvas(QWidget):
         self.scale = max(0.2, min(4.0, self.scale))
         
         if old_scale != self.scale:
-            # Зум относительно позиции курсора
             self.offset = mouse_pos - (mouse_pos - self.offset) * (self.scale / old_scale)
             self.update_all_nodes()
             self.update()
-            # Уведомляем главное окно об изменении зума
             if self.main_window and hasattr(self.main_window, 'update_zoom_label'):
                 self.main_window.update_zoom_label()
     
     def zoom_in(self):
-        """Приблизить (для кнопки)"""
         center = QPointF(self.width() / 2, self.height() / 2)
         self._apply_zoom(1.2, center)
     
     def zoom_out(self):
-        """Отдалить (для кнопки)"""
         center = QPointF(self.width() / 2, self.height() / 2)
         self._apply_zoom(0.8, center)
     
     def zoom_reset(self):
-        """Сбросить зум"""
         self.scale = 1.0
         self.offset = QPointF(0, 0)
         self.update_all_nodes()
@@ -270,7 +248,6 @@ class NodeCanvas(QWidget):
         # Обработка pinch gesture через QGestureEvent
         if event.type() == event.Type.Gesture:
             return self.gestureEvent(event)
-        # Обработка NativeGesture для macOS
         elif event.type() == event.Type.NativeGesture:
             try:
                 gesture_type = event.gestureType()
@@ -285,7 +262,6 @@ class NodeCanvas(QWidget):
         return super().event(event)
     
     def gestureEvent(self, event):
-        """Обработка жестов (pinch-to-zoom)"""
         pinch = event.gesture(Qt.GestureType.PinchGesture)
         if pinch:
             change_flags = pinch.changeFlags()

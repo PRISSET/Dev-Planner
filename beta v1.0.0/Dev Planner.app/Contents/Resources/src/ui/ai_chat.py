@@ -1,4 +1,3 @@
-"""AI Chat интеграция с OpenRouter — расширенная версия"""
 import json
 import os
 import requests
@@ -8,9 +7,18 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "openai/gpt-4o-mini"
-DEFAULT_API_KEY = "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"
+DEFAULT_MODEL = "openai/gpt-4o-mini"
+DEFAULT_API_KEY = ""
 CONTEXT_DIR = os.path.expanduser("~/.devchain_planner/contexts")
+API_KEY_FILE = os.path.expanduser("~/.devchain_planner/api_key.txt")
+MODELS_FILE = os.path.expanduser("~/.devchain_planner/models.json")
+
+DEFAULT_MODELS = [
+    "openai/gpt-4o-mini",
+    "openai/gpt-4o",
+    "anthropic/claude-3.5-sonnet",
+    "google/gemini-pro-1.5"
+]
 
 SYSTEM_PROMPT = """Ты — AI-исполнитель Dev Planner. Твоя задача — НЕМЕДЛЕННО выполнять команды пользователя.
 
@@ -71,8 +79,36 @@ def ensure_context_dir():
     if not os.path.exists(CONTEXT_DIR):
         os.makedirs(CONTEXT_DIR)
 
+def load_api_key():
+    if os.path.exists(API_KEY_FILE):
+        try:
+            with open(API_KEY_FILE, 'r', encoding='utf-8') as f:
+                return f.read().strip()
+        except:
+            pass
+    return DEFAULT_API_KEY
+
+def save_api_key(api_key):
+    ensure_context_dir()
+    with open(API_KEY_FILE, 'w', encoding='utf-8') as f:
+        f.write(api_key)
+
+def load_models():
+    if os.path.exists(MODELS_FILE):
+        try:
+            with open(MODELS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('models', DEFAULT_MODELS), data.get('selected', DEFAULT_MODEL)
+        except:
+            pass
+    return DEFAULT_MODELS.copy(), DEFAULT_MODEL
+
+def save_models(models, selected):
+    ensure_context_dir()
+    with open(MODELS_FILE, 'w', encoding='utf-8') as f:
+        json.dump({'models': models, 'selected': selected}, f, ensure_ascii=False, indent=2)
+
 def load_context(project_name):
-    """Загружает контекст разговора для проекта"""
     ensure_context_dir()
     path = os.path.join(CONTEXT_DIR, f"{project_name}.json")
     if os.path.exists(path):
@@ -84,10 +120,8 @@ def load_context(project_name):
     return []
 
 def save_context(project_name, messages):
-    """Сохраняет контекст разговора для проекта"""
     ensure_context_dir()
     path = os.path.join(CONTEXT_DIR, f"{project_name}.json")
-    # Сохраняем последние 100 сообщений
     to_save = messages[-100:] if len(messages) > 100 else messages
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(to_save, f, ensure_ascii=False, indent=2)
@@ -97,10 +131,11 @@ class AIWorker(QThread):
     response_ready = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
     
-    def __init__(self, api_key, messages):
+    def __init__(self, api_key, messages, model):
         super().__init__()
         self.api_key = api_key
         self.messages = messages
+        self.model = model
     
     def run(self):
         try:
@@ -111,7 +146,7 @@ class AIWorker(QThread):
                 "X-Title": "Dev Planner"
             }
             data = {
-                "model": MODEL,
+                "model": self.model,
                 "messages": self.messages,
                 "max_tokens": 2000
             }
@@ -173,7 +208,7 @@ class ChatMessage(QFrame):
 
 
 class AIChatPanel(QWidget):
-    # Сигналы для действий
+    
     task_created = pyqtSignal(str, str, str, int, int)  # title, desc, status, x, y
     tasks_connect = pyqtSignal(int, int)
     task_update_status = pyqtSignal(int, str)
@@ -188,38 +223,76 @@ class AIChatPanel(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.api_key = DEFAULT_API_KEY
+        self.api_key = load_api_key()
+        self.models, self.current_model = load_models()
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         self.worker = None
         self.current_project = None
-        self.task_counter = 0  # Для расположения задач
+        self.task_counter = 0
         
         self._setup_ui()
     
+    def _setup_api_key(self):
+        from PyQt6.QtWidgets import QInputDialog
+        current_key = self.api_key if self.api_key else ""
+        key, ok = QInputDialog.getText(
+            self, 
+            "API ключ OpenRouter", 
+            "Введите ваш API ключ OpenRouter:\n(получить можно на https://openrouter.ai/keys)",
+            text=current_key
+        )
+        if ok and key.strip():
+            self.api_key = key.strip()
+            save_api_key(self.api_key)
+            self._add_message_ui("API ключ успешно сохранен", is_user=False)
+    
+    def _add_model(self):
+        from PyQt6.QtWidgets import QInputDialog
+        model, ok = QInputDialog.getText(
+            self, 
+            "Добавить модель", 
+            "Введите название модели OpenRouter:\n(например: openai/gpt-4o или anthropic/claude-3-opus)",
+            text=""
+        )
+        if ok and model.strip():
+            model = model.strip()
+            if model not in self.models:
+                self.models.append(model)
+                save_models(self.models, self.current_model)
+                self._update_model_selector()
+                self._add_message_ui(f"Модель {model} добавлена", is_user=False)
+    
+    def _on_model_changed(self, index):
+        if index >= 0 and index < len(self.models):
+            self.current_model = self.models[index]
+            save_models(self.models, self.current_model)
+    
+    def _update_model_selector(self):
+        self.model_selector.clear()
+        for model in self.models:
+            short_name = model.split('/')[-1] if '/' in model else model
+            self.model_selector.addItem(short_name)
+        if self.current_model in self.models:
+            self.model_selector.setCurrentIndex(self.models.index(self.current_model))
+    
     def set_project(self, project_name):
-        """Устанавливает текущий проект и загружает контекст"""
         if self.current_project and self.current_project != project_name:
-            
             save_context(self.current_project, self.messages[1:])
         
         self.current_project = project_name
         self.task_counter = 0
-        
         
         saved = load_context(project_name)
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         if saved:
             self.messages.extend(saved)
         
-        # Очищаем UI чата
         self._clear_chat_ui()
         
-        # Показываем последние сообщения (обрабатываем AI ответы)
         for msg in self.messages[1:]:
             if msg['role'] == 'user':
                 self._add_message_ui(msg['content'], is_user=True)
             elif msg['role'] == 'assistant':
-                # Форматируем ответ AI (убираем JSON)
                 display_text = self._format_ai_message(msg['content'])
                 self._add_message_ui(display_text, is_user=False)
     
@@ -230,7 +303,6 @@ class AIChatPanel(QWidget):
                 item.widget().deleteLater()
     
     def _clear_chat(self):
-        """Полная очистка чата и истории"""
         self._clear_chat_ui()
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         if self.current_project:
@@ -241,28 +313,66 @@ class AIChatPanel(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
         
-        # Заголовок
+        
         header_layout = QHBoxLayout()
         header = QLabel("AI АССИСТЕНТ")
         header.setStyleSheet("color: #00ffff; font-weight: bold; letter-spacing: 2px; font-size: 11px;")
         header_layout.addWidget(header)
         header_layout.addStretch()
         
-        # Кнопка очистки чата
-        clear_chat_btn = QPushButton("🗑")
-        clear_chat_btn.setFixedSize(24, 24)
+        api_key_btn = QPushButton("⚙")
+        api_key_btn.setFixedSize(28, 28)
+        api_key_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        api_key_btn.setToolTip("Настроить API ключ")
+        api_key_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #00ffff;
+                border: none;
+                font-size: 16px;
+            }
+            QPushButton:hover {
+                color: #ffffff;
+            }
+        """)
+        api_key_btn.clicked.connect(self._setup_api_key)
+        header_layout.addWidget(api_key_btn)
+        header_layout.addSpacing(4)
+        
+        add_model_btn = QPushButton("＋")
+        add_model_btn.setFixedSize(28, 28)
+        add_model_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_model_btn.setToolTip("Добавить модель")
+        add_model_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #00ff9d;
+                border: none;
+                font-size: 18px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                color: #ffffff;
+            }
+        """)
+        add_model_btn.clicked.connect(self._add_model)
+        header_layout.addWidget(add_model_btn)
+        header_layout.addSpacing(4)
+        
+        clear_chat_btn = QPushButton("✕")
+        clear_chat_btn.setFixedSize(28, 28)
         clear_chat_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         clear_chat_btn.setToolTip("Очистить чат")
         clear_chat_btn.setStyleSheet("""
             QPushButton {
-                background: rgba(255, 0, 85, 0.2);
+                background: transparent;
                 color: #ff0055;
-                border: 1px solid rgba(255, 0, 85, 0.3);
-                border-radius: 12px;
-                font-size: 12px;
+                border: none;
+                font-size: 16px;
+                font-weight: bold;
             }
             QPushButton:hover {
-                background: rgba(255, 0, 85, 0.4);
+                color: #ffffff;
             }
         """)
         clear_chat_btn.clicked.connect(self._clear_chat)
@@ -274,13 +384,53 @@ class AIChatPanel(QWidget):
         header_layout.addWidget(self.status_label)
         layout.addLayout(header_layout)
         
-        # Разделитель
         sep = QFrame()
         sep.setFixedHeight(1)
         sep.setStyleSheet("background-color: #333333;")
         layout.addWidget(sep)
         
-        # Область сообщений
+        from PyQt6.QtWidgets import QComboBox
+        model_layout = QHBoxLayout()
+        model_label = QLabel("Модель:")
+        model_label.setStyleSheet("color: #666666; font-size: 10px;")
+        model_layout.addWidget(model_label)
+        
+        self.model_selector = QComboBox()
+        self.model_selector.setStyleSheet("""
+            QComboBox {
+                background: rgba(0,0,0,0.3);
+                color: #00ffff;
+                border: 1px solid #333333;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+            QComboBox:hover {
+                border-color: #00ffff;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid #00ffff;
+                margin-right: 5px;
+            }
+            QComboBox QAbstractItemView {
+                background: #1a1a1a;
+                color: #ffffff;
+                selection-background-color: rgba(0,255,255,0.3);
+                border: 1px solid #333333;
+            }
+        """)
+        self._update_model_selector()
+        self.model_selector.currentIndexChanged.connect(self._on_model_changed)
+        model_layout.addWidget(self.model_selector, 1)
+        layout.addLayout(model_layout)
+        
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setStyleSheet("""
@@ -313,7 +463,6 @@ class AIChatPanel(QWidget):
         self.scroll_area.setWidget(self.messages_widget)
         layout.addWidget(self.scroll_area, 1)
 
-        # Поле ввода
         input_container = QFrame()
         input_container.setStyleSheet("""
             QFrame {
@@ -360,7 +509,6 @@ class AIChatPanel(QWidget):
         input_layout.addWidget(self.send_btn)
         layout.addWidget(input_container)
         
-        # Подсказки
         hints_layout = QHBoxLayout()
         hints = ["Создай задачу", "Покажи задачи", "Расположи сеткой"]
         for hint_text in hints:
@@ -385,7 +533,6 @@ class AIChatPanel(QWidget):
         layout.addLayout(hints_layout)
     
     def _quick_action(self, text):
-        """Быстрые действия по кнопкам подсказок"""
         actions = {
             "Создай задачу": "Создай новую задачу",
             "Покажи задачи": "Покажи все задачи",
@@ -396,7 +543,11 @@ class AIChatPanel(QWidget):
 
     def _send_message(self):
         text = self.input_field.text().strip()
-        if not text or not self.api_key:
+        if not text:
+            return
+        
+        if not self.api_key:
+            self._add_message_ui("Ошибка: API ключ не настроен. Нажмите 🔑 для настройки.", is_user=False)
             return
         
         self._add_message_ui(text, is_user=True)
@@ -406,7 +557,7 @@ class AIChatPanel(QWidget):
         self.input_field.setEnabled(False)
         self.send_btn.setEnabled(False)
         
-        self.worker = AIWorker(self.api_key, self.messages.copy())
+        self.worker = AIWorker(self.api_key, self.messages.copy(), self.current_model)
         self.worker.response_ready.connect(self._on_response)
         self.worker.error_occurred.connect(self._on_error)
         self.worker.start()
@@ -414,11 +565,9 @@ class AIChatPanel(QWidget):
     def _add_message_ui(self, text, is_user=True):
         msg = ChatMessage(text, is_user)
         self.messages_layout.addWidget(msg)
-        # Отложенный скролл вниз после обновления layout
         QTimer.singleShot(50, self._scroll_to_bottom)
     
     def _scroll_to_bottom(self):
-        """Прокручивает чат вниз"""
         self.scroll_area.verticalScrollBar().setValue(
             self.scroll_area.verticalScrollBar().maximum()
         )
@@ -429,14 +578,12 @@ class AIChatPanel(QWidget):
         
         self.messages.append({"role": "assistant", "content": content})
         
-        # Сохраняем контекст
         if self.current_project:
             save_context(self.current_project, self.messages[1:])
         
         self._process_ai_response(content)
     
     def _get_task_position(self):
-        """Вычисляет позицию для новой задачи (сетка)"""
         col = self.task_counter % 3
         row = self.task_counter // 3
         x = 50 + col * 250
@@ -447,12 +594,10 @@ class AIChatPanel(QWidget):
     def _process_ai_response(self, content):
         actions_done = []
         
-        # Ищем ВСЕ JSON объекты в ответе
         json_objects = self._extract_all_json(content)
         
         for data in json_objects:
             try:
-                # Поддержка нескольких действий в одном объекте
                 if 'actions' in data:
                     for action_data in data['actions']:
                         result = self._execute_action(action_data)
@@ -465,36 +610,27 @@ class AIChatPanel(QWidget):
             except Exception:
                 pass
         
-        # Показываем только результат действий, а не сырой JSON
         if actions_done:
             display_text = "✓ " + "\n✓ ".join(actions_done)
         else:
-            # Убираем JSON из текста, если он там есть, но действия не распознаны
             display_text = self._clean_json_from_text(content)
         
         self._add_message_ui(display_text, is_user=False)
     
     def _clean_json_from_text(self, text):
-        """Убирает JSON блоки из текста, оставляя только читаемый текст"""
         import re
-        # Убираем JSON объекты
         cleaned = re.sub(r'\{[^{}]*\}', '', text)
-        # Убираем вложенные JSON
         while '{' in cleaned and '}' in cleaned:
             cleaned = re.sub(r'\{[^{}]*\}', '', cleaned)
-        # Убираем лишние пробелы и переносы
         cleaned = re.sub(r'\n\s*\n', '\n', cleaned).strip()
         return cleaned if cleaned else "Готово"
     
     def _format_ai_message(self, content):
-        """Форматирует сообщение AI для отображения (без выполнения действий)"""
-        # Проверяем есть ли JSON команды
         json_objects = self._extract_all_json(content)
         
         if not json_objects:
             return content
         
-        # Собираем описания действий
         descriptions = []
         for data in json_objects:
             if 'actions' in data:
@@ -513,7 +649,6 @@ class AIChatPanel(QWidget):
         return self._clean_json_from_text(content)
     
     def _describe_action(self, data):
-        """Возвращает описание действия без его выполнения"""
         action = data.get('action')
         if not action:
             return None
@@ -544,7 +679,6 @@ class AIChatPanel(QWidget):
         return None
     
     def _extract_all_json(self, text):
-        """Извлекает все JSON объекты из текста"""
         results = []
         i = 0
         while i < len(text):
@@ -570,12 +704,10 @@ class AIChatPanel(QWidget):
         return results
     
     def _execute_action(self, data):
-        """Выполняет одно действие и возвращает результат"""
         action = data.get('action')
         if not action:
             return None
                 
-        # СОЗДАНИЕ ЗАДАЧ
         if action == 'create_task':
             x, y = self._get_task_position()
             self.task_created.emit(
@@ -603,7 +735,6 @@ class AIChatPanel(QWidget):
                     self.tasks_connect.emit(start_idx + i, start_idx + i + 1)
             return f"Создано {len(tasks)} задач" + (" (цепочка)" if connect else "")
         
-        # СОЕДИНЕНИЯ
         elif action == 'connect':
             self.tasks_connect.emit(data.get('from', 1) - 1, data.get('to', 2) - 1)
             return f"Соединено: {data.get('from')} → {data.get('to')}"
@@ -618,7 +749,6 @@ class AIChatPanel(QWidget):
             self.disconnect_tasks.emit(data.get('from', 1) - 1, data.get('to', 2) - 1)
             return f"Разъединено: {data.get('from')} — {data.get('to')}"
         
-        # СТАТУСЫ
         elif action == 'set_status':
             self.task_update_status.emit(data.get('task', 1) - 1, data.get('status', 'none'))
             return f"Статус задачи {data.get('task')} → {data.get('status')}"
@@ -639,7 +769,6 @@ class AIChatPanel(QWidget):
                 self.task_update_status.emit(t - 1, 'progress')
             return f"В процессе: {data.get('tasks')}"
 
-        # РЕДАКТИРОВАНИЕ
         elif action == 'rename':
             self.task_rename.emit(data.get('task', 1) - 1, data.get('title', ''))
             return f"Переименовано: задача {data.get('task')}"
@@ -648,7 +777,6 @@ class AIChatPanel(QWidget):
             self.task_update_desc.emit(data.get('task', 1) - 1, data.get('description', ''))
             return f"Описание: задача {data.get('task')}"
         
-        # УДАЛЕНИЕ
         elif action == 'delete':
             self.task_delete.emit(data.get('task', 1) - 1)
             return f"Удалена задача {data.get('task')}"
@@ -663,12 +791,10 @@ class AIChatPanel(QWidget):
             self.task_counter = 0
             return "Все задачи удалены"
         
-        # ИНФОРМАЦИЯ
         elif action == 'get_tasks':
             self.request_tasks.emit()
             return "Список задач"
         
-        # РАСПОЛОЖЕНИЕ
         elif action.startswith('arrange_'):
             arrange_type = action.replace('arrange_', '')
             self.arrange_tasks.emit(arrange_type)
@@ -679,7 +805,6 @@ class AIChatPanel(QWidget):
             }
             return f"Расположение: {names.get(arrange_type, arrange_type)}"
         
-        # ШАБЛОНЫ
         elif action == 'template':
             template_type = data.get('type', 'web_app')
             self._create_template(template_type)
@@ -688,7 +813,6 @@ class AIChatPanel(QWidget):
         return None
     
     def _create_template(self, template_type):
-        """Создаёт шаблон проекта"""
         templates = {
             'web_app': [
                 {"title": "Анализ требований", "description": "Сбор и анализ требований к веб-приложению"},
@@ -742,7 +866,6 @@ class AIChatPanel(QWidget):
             self.task_created.emit(task['title'], task['description'], 'todo', x, y)
             self.task_counter += 1
         
-        # Соединяем последовательно
         for i in range(len(tasks) - 1):
             self.tasks_connect.emit(i, i + 1)
     

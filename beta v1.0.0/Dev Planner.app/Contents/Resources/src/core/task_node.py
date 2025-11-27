@@ -1,4 +1,3 @@
-"""Виджет задачи (карточка)"""
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QTextEdit, QMenu, QGraphicsDropShadowEffect
 from PyQt6.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPen, QPixmap, QIcon
@@ -6,7 +5,6 @@ from src.core.config import STATUSES
 
 
 def create_color_icon(color_hex, size=16):
-    """Создаёт цветную круглую иконку"""
     pixmap = QPixmap(size, size)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
@@ -32,7 +30,7 @@ class TaskNode(QWidget):
         self.dragging = False
         self.drag_offset = QPoint()
         self.connecting = False
-        self.is_hover_target = False  # Подсветка при наведении во время соединения
+        self.is_hover_target = False
         
         self.setFixedSize(self.BASE_WIDTH, self.BASE_HEIGHT)
         self.setMouseTracking(True)
@@ -43,7 +41,6 @@ class TaskNode(QWidget):
         self.show()
     
     def update_scale(self, scale):
-        """Обновляет размер карточки при изменении масштаба"""
         new_width = int(self.BASE_WIDTH * scale)
         new_height = int(self.BASE_HEIGHT * scale)
         self.setFixedSize(new_width, new_height)
@@ -112,19 +109,16 @@ class TaskNode(QWidget):
         """)
         self.desc_edit.textChanged.connect(self.on_change)
         
-        # Устанавливаем фильтр событий для блокировки во время соединения
         self.title_edit.installEventFilter(self)
         self.desc_edit.installEventFilter(self)
-        self.desc_edit.viewport().installEventFilter(self)  # Важно для QTextEdit!
+        self.desc_edit.viewport().installEventFilter(self)
         self.delete_btn.installEventFilter(self)
         
         self.main_layout.addLayout(header)
         self.main_layout.addWidget(self.desc_edit, 1)
     
     def eventFilter(self, obj, event):
-        """Блокируем взаимодействие с элементами во время соединения"""
         if self.canvas.connecting_from:
-            # Блокируем клики и фокус на текстовых полях и кнопках
             if event.type() in (
                 event.Type.MouseButtonPress,
                 event.Type.MouseButtonRelease,
@@ -132,10 +126,9 @@ class TaskNode(QWidget):
                 event.Type.FocusIn,
                 event.Type.KeyPress,
             ):
-                # Передаём событие карточке для обработки соединения
                 if event.type() == event.Type.MouseButtonPress:
                     self.mousePressEvent(event)
-                return True  # Блокируем событие
+                return True
         return super().eventFilter(obj, event)
     
     def on_change(self):
@@ -170,7 +163,6 @@ class TaskNode(QWidget):
         path = QPainterPath()
         path.addRoundedRect(QRectF(0, 0, self.width(), self.height()), 10, 10)
         
-        # Подсветка при наведении во время соединения
         if self.is_hover_target:
             painter.fillPath(path, QColor(0, 255, 255, 40))
             painter.setPen(QPen(QColor("#00ffff"), 3))
@@ -181,19 +173,16 @@ class TaskNode(QWidget):
         painter.end()
     
     def set_hover_target(self, is_target):
-        """Устанавливает подсветку карточки как цели соединения"""
         if self.is_hover_target != is_target:
             self.is_hover_target = is_target
             self.update()
     
     def mousePressEvent(self, event):
-        # Если идёт соединение — завершаем его при клике на эту карточку
         if self.canvas.connecting_from:
             self.set_hover_target(False)
             if self.canvas.connecting_from != self:
                 self.canvas.complete_connection(self)
             else:
-                # Клик на ту же карточку — отмена
                 self.canvas.cancel_connection()
             event.accept()
             return
@@ -206,25 +195,22 @@ class TaskNode(QWidget):
             self.show_context_menu(event.globalPosition().toPoint())
     
     def enterEvent(self, event):
-        # Подсветка при наведении во время соединения
         if self.canvas.connecting_from and self.canvas.connecting_from != self:
             self.set_hover_target(True)
             self.canvas.hover_target = self
     
     def leaveEvent(self, event):
-        # Убираем подсветку
         if self.is_hover_target:
             self.set_hover_target(False)
             if self.canvas.hover_target == self:
                 self.canvas.hover_target = None
     
     def mouseMoveEvent(self, event):
-        # Если идёт соединение — передаём позицию мыши в canvas для отрисовки линии
         if self.canvas.connecting_from:
             global_pos = self.mapToParent(event.pos())
             self.canvas.mouse_pos = QPointF(global_pos.x(), global_pos.y())
             self.canvas.connection_overlay.update()
-            return  # Блокируем другие действия во время соединения
+            return
             
         if self.dragging:
             new_pos = self.mapToParent(event.pos() - self.drag_offset)

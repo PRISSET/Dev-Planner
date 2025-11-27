@@ -1,4 +1,3 @@
-"""Функции для работы с хранилищем данных"""
 import os
 import json
 from src.core.config import DATA_DIR, PROJECTS_FILE

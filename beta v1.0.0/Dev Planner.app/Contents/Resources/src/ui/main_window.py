@@ -1,4 +1,3 @@
-"""Главное окно приложения"""
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QLabel, QListWidgetItem, QInputDialog, QMessageBox, 
                              QFileDialog, QSplitter, QScrollArea, QSizePolicy)
@@ -72,7 +71,6 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(title_bar)
     
     def _setup_toolbar(self, main_layout):
-        """Горизонтальная панель инструментов сверху"""
         toolbar = QWidget()
         toolbar.setFixedHeight(50)
         toolbar.setStyleSheet("background-color: #1a1a1a; border-bottom: 1px solid #333333;")
@@ -80,7 +78,6 @@ class MainWindow(QMainWindow):
         toolbar_layout.setContentsMargins(12, 6, 12, 6)
         toolbar_layout.setSpacing(8)
         
-        # Кнопки зума
         zoom_out_btn = ModernButton("−", "#00ffff")
         zoom_out_btn.setFixedSize(36, 36)
         zoom_out_btn.clicked.connect(lambda: self.canvas.zoom_out())
@@ -97,12 +94,10 @@ class MainWindow(QMainWindow):
         toolbar_layout.addWidget(self.zoom_label_btn)
         toolbar_layout.addWidget(zoom_in_btn)
         
-        # Разделитель
         sep1 = QLabel("|")
         sep1.setStyleSheet("color: #333333; font-size: 16px;")
         toolbar_layout.addWidget(sep1)
         
-        # Кнопки действий
         export_btn = ModernButton("Экспорт ТЗ", "#bd00ff")
         export_btn.setFixedHeight(36)
         export_btn.clicked.connect(self.export_tz)
@@ -115,7 +110,6 @@ class MainWindow(QMainWindow):
         
         toolbar_layout.addStretch()
         
-        # Статусы справа
         for key, value in STATUSES.items():
             indicator = QLabel()
             indicator.setFixedSize(8, 8)
@@ -126,7 +120,6 @@ class MainWindow(QMainWindow):
             toolbar_layout.addWidget(name_label)
             toolbar_layout.addSpacing(6)
         
-        # Статистика
         sep2 = QLabel("|")
         sep2.setStyleSheet("color: #333333; font-size: 16px;")
         toolbar_layout.addWidget(sep2)
@@ -142,7 +135,6 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(toolbar)
     
     def _setup_content(self, main_layout):
-        # Используем QSplitter для адаптивности
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setStyleSheet("""
             QSplitter::handle {
@@ -154,27 +146,22 @@ class MainWindow(QMainWindow):
             }
         """)
         
-        # Левая панель - проекты
         self._setup_projects_panel(splitter)
         
-        # Канвас (центр)
         self.canvas = NodeCanvas()
         self.canvas.main_window = self
         self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         splitter.addWidget(self.canvas)
         
-        # Правая панель - AI чат
         self._setup_ai_panel(splitter)
         
-        # Пропорции: проекты 15%, канвас 55%, AI чат 30%
         splitter.setSizes([180, 700, 380])
-        splitter.setStretchFactor(0, 0)  # Проекты - фиксированная ширина
-        splitter.setStretchFactor(1, 1)  # Канвас - растягивается
-        splitter.setStretchFactor(2, 0)  # AI чат - фиксированная ширина
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(2, 0)
         
         main_layout.addWidget(splitter, 1)
         
-        # Версия в нижнем левом углу
         self._setup_version_label()
     
     def _setup_projects_panel(self, splitter):
@@ -200,7 +187,6 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self.projects_panel)
 
     def _setup_version_label(self):
-        """Добавляет версию в нижний левый угол"""
         self.version_label = QLabel(APP_VERSION)
         self.version_label.setStyleSheet("""
             color: #444444;
@@ -218,13 +204,11 @@ class MainWindow(QMainWindow):
         self._update_version_position()
     
     def _update_version_position(self):
-        """Обновляет позицию лейбла версии"""
         if hasattr(self, 'version_label'):
             self.version_label.adjustSize()
             self.version_label.move(8, self.centralWidget().height() - self.version_label.height() - 4)
 
     def _setup_ai_panel(self, splitter):
-        """Расширенная панель AI чата справа"""
         self.ai_panel = TransparentPanel()
         self.ai_panel.setMinimumWidth(280)
         self.ai_panel.setMaximumWidth(500)
@@ -284,7 +268,7 @@ class MainWindow(QMainWindow):
         if name in self.projects:
             self.canvas.load_project_data(self.projects[name])
         
-        # Устанавливаем проект для AI чата (загружает контекст)
+       
         self.ai_chat.set_project(name)
         self.ai_chat.task_counter = len(self.canvas.nodes)
         
@@ -344,7 +328,6 @@ class MainWindow(QMainWindow):
         self.zoom_label_btn.setText(f"{percent}%")
     
     def _on_ai_task_created(self, title, description, status="none", x=0, y=0):
-        """Создание задачи от AI с указанной позицией"""
         node = self.canvas.add_node(x, y)
         node.title_edit.setText(title)
         node.desc_edit.setPlainText(description)
@@ -353,20 +336,17 @@ class MainWindow(QMainWindow):
         self.update_stats()
     
     def _on_ai_rename_task(self, task_idx, title):
-        """Переименование задачи"""
         nodes = self.canvas.nodes
         if 0 <= task_idx < len(nodes):
             nodes[task_idx].title_edit.setText(title)
     
     def _on_ai_delete_task(self, task_idx):
-        """Удаление одной задачи"""
         nodes = self.canvas.nodes
         if 0 <= task_idx < len(nodes):
             self.canvas.remove_node(nodes[task_idx])
             self.update_stats()
     
     def _on_ai_delete_many(self, tasks):
-        """Удаление нескольких задач или по статусу"""
         nodes = self.canvas.nodes
         if tasks and isinstance(tasks[0], str):
             # Удаление по статусу
@@ -375,19 +355,17 @@ class MainWindow(QMainWindow):
             for node in to_delete:
                 self.canvas.remove_node(node)
         else:
-            # Удаление по индексам (в обратном порядке)
+            
             for idx in sorted(tasks, reverse=True):
                 if 0 <= idx < len(nodes):
                     self.canvas.remove_node(nodes[idx])
         self.update_stats()
     
     def _on_ai_clear_all(self):
-        """Очистка всех задач"""
         self.canvas.clear_all()
         self.update_stats()
     
     def _on_ai_disconnect(self, from_idx, to_idx):
-        """Разъединение задач"""
         nodes = self.canvas.nodes
         if 0 <= from_idx < len(nodes) and 0 <= to_idx < len(nodes):
             conn = (nodes[from_idx], nodes[to_idx])
@@ -399,7 +377,6 @@ class MainWindow(QMainWindow):
             self.canvas.connection_overlay.update()
     
     def _on_ai_arrange(self, arrange_type):
-        """Расположение задач"""
         import random
         import math
         nodes = self.canvas.nodes
@@ -411,7 +388,6 @@ class MainWindow(QMainWindow):
         gap_x, gap_y = 40, 30
         
         if arrange_type == 'grid':
-            # Адаптивная сетка
             cols = max(1, int(math.ceil(math.sqrt(n))))
             for i, node in enumerate(nodes):
                 col = i % cols
@@ -421,7 +397,6 @@ class MainWindow(QMainWindow):
                 self.canvas.update_node_position(node)
         
         elif arrange_type == 'horizontal':
-            # Горизонтальная линия по центру
             total_w = n * card_w + (n - 1) * gap_x
             start_x = max(50, (800 - total_w) // 2)
             for i, node in enumerate(nodes):
@@ -430,20 +405,17 @@ class MainWindow(QMainWindow):
                 self.canvas.update_node_position(node)
         
         elif arrange_type == 'vertical':
-            # Вертикальная линия
             for i, node in enumerate(nodes):
                 node.node_x = 350
                 node.node_y = 50 + i * (card_h + gap_y)
                 self.canvas.update_node_position(node)
         
         elif arrange_type == 'random':
-            # Случайное с минимальным перекрытием
             positions = []
             for node in nodes:
                 for _ in range(50):  # Попытки найти место
                     x = random.randint(50, 700)
                     y = random.randint(50, 500)
-                    # Проверяем перекрытие
                     ok = True
                     for px, py in positions:
                         if abs(x - px) < card_w + 20 and abs(y - py) < card_h + 20:
@@ -457,7 +429,6 @@ class MainWindow(QMainWindow):
                 self.canvas.update_node_position(node)
         
         elif arrange_type == 'circle':
-            # Круговое расположение
             cx, cy = 450, 350
             radius = max(150, n * 30)
             for i, node in enumerate(nodes):
@@ -467,8 +438,6 @@ class MainWindow(QMainWindow):
                 self.canvas.update_node_position(node)
         
         elif arrange_type == 'tree':
-            # Иерархическое дерево (по связям)
-            # Находим корни (узлы без входящих связей)
             has_incoming = set()
             for n1, n2 in self.canvas.connections:
                 has_incoming.add(n2)
@@ -487,7 +456,6 @@ class MainWindow(QMainWindow):
                 if level not in levels:
                     levels[level] = []
                 levels[level].append(node)
-                # Находим детей
                 for n1, n2 in self.canvas.connections:
                     if n1 == node:
                         assign_level(n2, level + 1)
@@ -495,7 +463,6 @@ class MainWindow(QMainWindow):
             for root in roots:
                 assign_level(root, 0)
             
-            # Добавляем непосещённые
             for node in nodes:
                 if node not in visited:
                     max_level = max(levels.keys()) + 1 if levels else 0
@@ -503,7 +470,6 @@ class MainWindow(QMainWindow):
                         levels[max_level] = []
                     levels[max_level].append(node)
             
-            # Располагаем по уровням
             for level, level_nodes in levels.items():
                 count = len(level_nodes)
                 total_w = count * card_w + (count - 1) * gap_x
@@ -514,7 +480,6 @@ class MainWindow(QMainWindow):
                     self.canvas.update_node_position(node)
         
         elif arrange_type == 'cascade':
-            # Каскад (лесенка)
             for i, node in enumerate(nodes):
                 node.node_x = 50 + i * 60
                 node.node_y = 50 + i * 50
@@ -524,7 +489,6 @@ class MainWindow(QMainWindow):
         self.canvas.connection_overlay.update()
     
     def _on_ai_connect_tasks(self, from_idx, to_idx):
-        """Соединение задач от AI"""
         nodes = self.canvas.nodes
         if 0 <= from_idx < len(nodes) and 0 <= to_idx < len(nodes):
             from_node = nodes[from_idx]
@@ -535,20 +499,17 @@ class MainWindow(QMainWindow):
                     self.canvas.connection_overlay.update()
     
     def _on_ai_update_status(self, task_idx, status):
-        """Обновление статуса задачи от AI"""
         nodes = self.canvas.nodes
         if 0 <= task_idx < len(nodes) and status in STATUSES:
             nodes[task_idx].set_status(status)
             self.update_stats()
     
     def _on_ai_update_desc(self, task_idx, description):
-        """Обновление описания задачи от AI"""
         nodes = self.canvas.nodes
         if 0 <= task_idx < len(nodes):
             nodes[task_idx].desc_edit.setPlainText(description)
     
     def _on_ai_request_tasks(self):
-        """Отправка списка задач в AI чат"""
         nodes = self.canvas.nodes
         if not nodes:
             self.ai_chat.set_tasks_info("Задач пока нет")

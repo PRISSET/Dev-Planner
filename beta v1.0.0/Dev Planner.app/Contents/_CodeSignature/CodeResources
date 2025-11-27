@@ -390,7 +390,7 @@
 		</data>
 		<key>Resources/base_library.zip</key>
 		<data>
-		ry5L7sPJVWkJ44LzOxky7eP40Ng=
+		yzbZRsbCnFKf+90ntRJJ+8YxYJE=
 		</data>
 		<key>Resources/certifi/cacert.pem</key>
 		<data>
@@ -454,27 +454,27 @@
 		</data>
 		<key>Resources/src/core/__pycache__/config.cpython-314.pyc</key>
 		<data>
-		aD/OnZx03Fxz2aKEdOhO3lASSt8=
+		1lhKhH6ZJNYu1wendirg3UrX1Fk=
 		</data>
 		<key>Resources/src/core/__pycache__/storage.cpython-314.pyc</key>
 		<data>
-		5OFsk1dfAjI2zFBNJWJxtNNKO7U=
+		HtW00iZaTXgqmu0slMV0lbjkKFU=
 		</data>
 		<key>Resources/src/core/__pycache__/task_node.cpython-314.pyc</key>
 		<data>
-		97TdrhZiq3YSLt6G6Ays2I+VBeU=
+		3DBftsnyOvF2SmzshHPz3eH3Hi4=
 		</data>
 		<key>Resources/src/core/config.py</key>
 		<data>
-		KeKFmDOt9nZ084peHaqhtrt7Yas=
+		TdL/rRj1ZUnp66TtFnHFwGgwMes=
 		</data>
 		<key>Resources/src/core/storage.py</key>
 		<data>
-		LxdBHjNgRlH/l75ToByeoBoO/Uk=
+		HpB3DoA0qJ5SjkO30fxScHcZkz4=
 		</data>
 		<key>Resources/src/core/task_node.py</key>
 		<data>
-		VUXM9aEqKmp1VV05PvghiNW1JOE=
+		TDMcgYcMNpfsZ6AY2Wp2tlYx7Gk=
 		</data>
 		<key>Resources/src/ui/__init__.py</key>
 		<data>
@@ -486,35 +486,35 @@
 		</data>
 		<key>Resources/src/ui/__pycache__/ai_chat.cpython-314.pyc</key>
 		<data>
-		fC0RvCZhJ6naoBujYl9YZaT/EB0=
+		ZnXS9prVopoBJUV/VOmeDVC6xws=
 		</data>
 		<key>Resources/src/ui/__pycache__/canvas.cpython-314.pyc</key>
 		<data>
-		YUDA3AbvI3wFAviRHAiMtmH3ikc=
+		rokVwbwaV15CgGBMilaDq/pcRWI=
 		</data>
 		<key>Resources/src/ui/__pycache__/main_window.cpython-314.pyc</key>
 		<data>
-		RGvzrCUek/P5YcT+FtNHIljlrus=
+		6LwM74CpnPlmlfcXHVk2r1FBYsY=
 		</data>
 		<key>Resources/src/ui/__pycache__/widgets.cpython-314.pyc</key>
 		<data>
-		2SRr1W+YhgeU51s0Q/COB8EvNV0=
+		vkRvr1462CzKOPdZuecfwwqS/1I=
 		</data>
 		<key>Resources/src/ui/ai_chat.py</key>
 		<data>
-		ugg7vv35M67wpj8BNgCZd5m/7Eg=
+		Ek9+GMwK0yFSvoG1iP9iYDpReMo=
 		</data>
 		<key>Resources/src/ui/canvas.py</key>
 		<data>
-		NvWRkSAVI6RrfHOkMqBFRDettDU=
+		Ke6WSLnqXDQVQS8OcHBeMzI+ZTI=
 		</data>
 		<key>Resources/src/ui/main_window.py</key>
 		<data>
-		DUD6njsjkZfEurQY0lOEcNjY+vQ=
+		v0K9sZKrz+oVugGID+YIhJdtevU=
 		</data>
 		<key>Resources/src/ui/widgets.py</key>
 		<data>
-		lFd/61OcEHXoLNd1PemGhGY0bm0=
+		FIRE1XWYdEGij1hPJiELlJz1wUg=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -2146,7 +2146,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			MwHmXln53O07FRLSfzTwTSqQPYhJtSJ13eBI98cK59A=
+			Yt1wj+HegDw6ZhYUcSpkLdTR9EQmcoVZ0ztGQvj3mcE=
 			</data>
 		</dict>
 		<key>Resources/certifi/cacert.pem</key>
@@ -2293,42 +2293,42 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			mlRD96NNLyeSkPxOHXGUpX+Xsj0lTeUPtBcQ329fBBg=
+			MIH9qXMMbCDt7Sr6+Gyi3Bt6EvCwhqKmDzR8DzR7vKs=
 			</data>
 		</dict>
 		<key>Resources/src/core/__pycache__/storage.cpython-314.pyc</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			GmcFn91Xno1Ug+2uLeEVjk/Mzi04A7L6JYe1QHCY/AY=
+			revb52L6U153MuY+2yHOV9y9DAej39V2uwmI2U6EO1A=
 			</data>
 		</dict>
 		<key>Resources/src/core/__pycache__/task_node.cpython-314.pyc</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			LcGf4VsH1rqEyzHtM5kcFDFb7TFgRJzDXMz88IMtw/o=
+			CuUUu2spVCVNIUjM1XaGoukCJCTB5JpOx1xdEVNsbTc=
 			</data>
 		</dict>
 		<key>Resources/src/core/config.py</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			/msZFoUCrntlhVm9LpbGvoZp7FHH7lEv+OHEa8FHxpM=
+			kqEBHlxfJ8uge1q04FAxZCjHXjOphZ2zok8S5TUh9AM=
 			</data>
 		</dict>
 		<key>Resources/src/core/storage.py</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			3wOQ+pg5Bk7Ko4NyLxSJj/BuEoqMrktMhhkdKdFc38E=
+			uNBDdeacUFQlqgTd8QC9iBmQJbv7Q+ZmwCtvvQvwzAI=
 			</data>
 		</dict>
 		<key>Resources/src/core/task_node.py</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			J7vRCSYdQoOxofAThl8pPWZU3StYe0cV9J0mNZgOFg0=
+			LDF04Yjk2ErKHyRdtGXNmtjeNsmx2pmWErytoDv136I=
 			</data>
 		</dict>
 		<key>Resources/src/ui/__init__.py</key>
@@ -2349,56 +2349,56 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			SX05x47y32hevIdKIGNLaiT28PL0+hIkIstvFEu5AEw=
+			WdjUU4I2bC+/bTovRO39lt9ZvF+w4UKgu/Eo/awQ2uE=
 			</data>
 		</dict>
 		<key>Resources/src/ui/__pycache__/canvas.cpython-314.pyc</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			UGTcsCmYWwio/qwNkoyhul4YB7lMrtw2auhmS5MAw/E=
+			kkO8rrRolHAHaHyMwKjJij/DKA55gaJzl54K2jLftm4=
 			</data>
 		</dict>
 		<key>Resources/src/ui/__pycache__/main_window.cpython-314.pyc</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			rph1sf66iv68nJD51uxdos3fM+r0k/rt9E6mphyhiKQ=
+			i9n636gpc6mYg7F//Y+55wOfncQMao29/tmxMKhKl2A=
 			</data>
 		</dict>
 		<key>Resources/src/ui/__pycache__/widgets.cpython-314.pyc</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			pIyp0Hvhv0XJLlP/Gs3U+TrI6P1MgTdEjxsO34bYT1s=
+			HThleQ6q0jqUP7C5ywaZ1Ug21+8W/7mZqGDRAp+keI0=
 			</data>
 		</dict>
 		<key>Resources/src/ui/ai_chat.py</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			Ryr5iI8dKPPsnrBpWq0TK1+8NRtTcZm4xNGI2pBvxKQ=
+			hs2aluh23lAq+UT4Uri0G5XtIF71ivki2uexjlRzHZU=
 			</data>
 		</dict>
 		<key>Resources/src/ui/canvas.py</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			3F6NAGeAiQ3rRXAJ46+Vkm/iws+eLTszVd5Slk5LWjg=
+			VI8AFLyO9mt/XvbXyWpLYabKWXsiiZ4lO1S++EK/Ep8=
 			</data>
 		</dict>
 		<key>Resources/src/ui/main_window.py</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			fseKlj0rwF2CU6IVc5iBKqsPKOpWegwCU4tDISxomVw=
+			mQAOECwqL6rWnZF/3JnpjofznXyilXSxx8SzVtntxXo=
 			</data>
 		</dict>
 		<key>Resources/src/ui/widgets.py</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			2PjowWveQ1uaoXR2IpWBjjZhpAYFVpFMhdgPQO8bJu8=
+			A/b9jzQNTAW4CK3d/Vtfe4wLfwt7u10cwi7saY8bL+k=
 			</data>
 		</dict>
 	</dict>
