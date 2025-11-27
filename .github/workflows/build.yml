@@ -20,12 +20,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller
+          pip install pyinstaller pillow
           pip install -r req.txt
+      
+      - name: Convert icon to ICO
+        run: |
+          python -c "from PIL import Image; img = Image.open('icon.iconset/icon_256x256.png'); img.save('icon.ico', format='ICO', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])"
       
       - name: Build Windows EXE
         run: |
-          pyinstaller --name "Dev Planner" --windowed --onefile --icon=icon.iconset/icon_256x256.png --add-data "src;src" main.py
+          pyinstaller --name "Dev Planner" --windowed --onefile --icon=icon.ico --add-data "src;src" main.py
       
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
