@@ -29,7 +29,6 @@ jobs:
       
       - name: Build Windows EXE
         run: |
-          del "Dev Tool.spec" 2>nul || echo "No spec file"
           pyinstaller --name "Dev Planner" --windowed --onefile --icon=icon.ico --add-data "src;src" main.py
       
       - name: Upload Windows artifact
@@ -57,14 +56,15 @@ jobs:
       - name: Build macOS App
         run: |
           pyinstaller --name "Dev Planner" --windowed --onedir --icon=icon.icns --add-data "src:src" main.py
-          
+      
       - name: Create App Bundle
         run: |
           mkdir -p "dist/Dev Planner.app/Contents/MacOS"
           mkdir -p "dist/Dev Planner.app/Contents/Resources"
-          mv "dist/Dev Planner/"* "dist/Dev Planner.app/Contents/MacOS/" || true
+          cp -R "dist/Dev Planner/"* "dist/Dev Planner.app/Contents/MacOS/"
           cp icon.icns "dist/Dev Planner.app/Contents/Resources/"
-          echo '<?xml version="1.0" encoding="UTF-8"?>
+          cat > "dist/Dev Planner.app/Contents/Info.plist" << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
@@ -79,7 +79,8 @@ jobs:
             <key>CFBundleVersion</key>
             <string>1.0.1</string>
           </dict>
-          </plist>' > "dist/Dev Planner.app/Contents/Info.plist"
+          </plist>
+          EOF
       
       - name: Create DMG
         run: |
