@@ -18,6 +18,11 @@ class CollabClient(QObject):
     room_closed = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
     
+    _emit_connected = pyqtSignal()
+    _emit_disconnected = pyqtSignal()
+    _emit_room_created = pyqtSignal(str, str)
+    _emit_room_joined = pyqtSignal(str, dict, list)
+    _emit_join_failed = pyqtSignal(str)
     _emit_members_updated = pyqtSignal(list)
     _emit_user_joined = pyqtSignal(str, str)
     _emit_user_left = pyqtSignal(str)
@@ -25,6 +30,7 @@ class CollabClient(QObject):
     _emit_task_action = pyqtSignal(str, dict, str)
     _emit_cursor_updated = pyqtSignal(str, float, float, str)
     _emit_room_closed = pyqtSignal(str)
+    _emit_error = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -34,6 +40,11 @@ class CollabClient(QObject):
         self.user_name = "User"
         self.is_host = False
         
+        self._emit_connected.connect(self.connected, Qt.ConnectionType.QueuedConnection)
+        self._emit_disconnected.connect(self.disconnected, Qt.ConnectionType.QueuedConnection)
+        self._emit_room_created.connect(self.room_created, Qt.ConnectionType.QueuedConnection)
+        self._emit_room_joined.connect(self.room_joined, Qt.ConnectionType.QueuedConnection)
+        self._emit_join_failed.connect(self.join_failed, Qt.ConnectionType.QueuedConnection)
         self._emit_members_updated.connect(self.members_updated, Qt.ConnectionType.QueuedConnection)
         self._emit_user_joined.connect(self.user_joined, Qt.ConnectionType.QueuedConnection)
         self._emit_user_left.connect(self.user_left, Qt.ConnectionType.QueuedConnection)
@@ -41,17 +52,18 @@ class CollabClient(QObject):
         self._emit_task_action.connect(self.task_action_received, Qt.ConnectionType.QueuedConnection)
         self._emit_cursor_updated.connect(self.cursor_updated, Qt.ConnectionType.QueuedConnection)
         self._emit_room_closed.connect(self.room_closed, Qt.ConnectionType.QueuedConnection)
+        self._emit_error.connect(self.error_occurred, Qt.ConnectionType.QueuedConnection)
         
         self._setup_handlers()
 
     def _setup_handlers(self):
         @self.sio.event
         def connect():
-            self.connected.emit()
+            self._emit_connected.emit()
 
         @self.sio.event
         def disconnect():
-            self.disconnected.emit()
+            self._emit_disconnected.emit()
             self.room_id = None
 
         @self.sio.on('members_updated')
@@ -100,7 +112,7 @@ class CollabClient(QObject):
                 self.sio.connect(SERVER_URL)
             return True
         except Exception as e:
-            self.error_occurred.emit(f"Connection failed: {str(e)}")
+            self._emit_error.emit(f"Connection failed: {str(e)}")
             return False
 
     def disconnect_from_server(self):
@@ -124,9 +136,9 @@ class CollabClient(QObject):
         
         if response.get('success'):
             self.room_id = response.get('roomId')
-            self.room_created.emit(self.room_id, response.get('code', ''))
+            self._emit_room_created.emit(self.room_id, response.get('code', ''))
         else:
-            self.error_occurred.emit(response.get('message', 'Failed to create room'))
+            self._emit_error.emit(response.get('message', 'Failed to create room'))
 
     def join_room(self, code: str, name: str):
         if not self.sio.connected:
@@ -143,13 +155,13 @@ class CollabClient(QObject):
         
         if response.get('success'):
             self.room_id = response.get('roomId')
-            self.room_joined.emit(
+            self._emit_room_joined.emit(
                 self.room_id,
                 response.get('projectData', {}),
                 response.get('members', [])
             )
         else:
-            self.join_failed.emit(response.get('message', 'Failed to join room'))
+            self._emit_join_failed.emit(response.get('message', 'Failed to join room'))
 
     def leave_room(self):
         if self.sio.connected and self.room_id:
