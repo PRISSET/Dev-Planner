@@ -55,7 +55,30 @@ jobs:
       
       - name: Build macOS App
         run: |
-          pyinstaller "Dev Tool.spec" --noconfirm
+          pyinstaller --name "Dev Planner" --windowed --onedir --icon=icon.icns --add-data "src:src" main.py
+          
+      - name: Create App Bundle
+        run: |
+          mkdir -p "dist/Dev Planner.app/Contents/MacOS"
+          mkdir -p "dist/Dev Planner.app/Contents/Resources"
+          mv "dist/Dev Planner/"* "dist/Dev Planner.app/Contents/MacOS/" || true
+          cp icon.icns "dist/Dev Planner.app/Contents/Resources/"
+          echo '<?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>Dev Planner</string>
+            <key>CFBundleIconFile</key>
+            <string>icon.icns</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.devplanner.app</string>
+            <key>CFBundleName</key>
+            <string>Dev Planner</string>
+            <key>CFBundleVersion</key>
+            <string>1.0.1</string>
+          </dict>
+          </plist>' > "dist/Dev Planner.app/Contents/Info.plist"
       
       - name: Create DMG
         run: |

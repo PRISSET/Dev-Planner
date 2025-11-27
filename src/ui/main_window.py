@@ -9,7 +9,7 @@ from src.ui.widgets import TransparentPanel, ModernButton, ProjectListWidget, Co
 from src.ui.canvas import NodeCanvas
 from src.ui.ai_chat import AIChatPanel
 
-APP_VERSION = "beta v1.0.0"
+APP_VERSION = "beta v1.0.1"
 
 try:
     from src.core.collab import CollabClient, CollabThread

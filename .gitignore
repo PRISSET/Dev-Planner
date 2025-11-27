@@ -11,7 +11,7 @@ venv/
 env/
 ENV/
 .venv
-*.spec
+
 .DS_Store
 *.log
 *.pot
