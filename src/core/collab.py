@@ -1,23 +1,30 @@
-import json
 import socketio
-from PyQt6.QtCore import QObject, pyqtSignal, QThread
+from PyQt6.QtCore import QObject, pyqtSignal, QThread, QMetaObject, Qt, Q_ARG
 
 SERVER_URL = "http://144.31.221.20:3005"
 
 class CollabClient(QObject):
     connected = pyqtSignal()
     disconnected = pyqtSignal()
-    room_created = pyqtSignal(str, str)  # roomId, code
-    room_joined = pyqtSignal(str, dict, list)  # roomId, projectData, members
-    join_failed = pyqtSignal(str)  # message
-    members_updated = pyqtSignal(list)  # members
-    user_joined = pyqtSignal(str, str)  # id, name
-    user_left = pyqtSignal(str)  # id
-    project_updated = pyqtSignal(dict)  # projectData
-    task_action_received = pyqtSignal(str, dict, str)  # action, payload, from
-    cursor_updated = pyqtSignal(str, float, float, str)  # id, x, y, name
-    room_closed = pyqtSignal(str)  # message
-    error_occurred = pyqtSignal(str)  # message
+    room_created = pyqtSignal(str, str)
+    room_joined = pyqtSignal(str, dict, list)
+    join_failed = pyqtSignal(str)
+    members_updated = pyqtSignal(list)
+    user_joined = pyqtSignal(str, str)
+    user_left = pyqtSignal(str)
+    project_updated = pyqtSignal(dict)
+    task_action_received = pyqtSignal(str, dict, str)
+    cursor_updated = pyqtSignal(str, float, float, str)
+    room_closed = pyqtSignal(str)
+    error_occurred = pyqtSignal(str)
+    
+    _emit_members_updated = pyqtSignal(list)
+    _emit_user_joined = pyqtSignal(str, str)
+    _emit_user_left = pyqtSignal(str)
+    _emit_project_updated = pyqtSignal(dict)
+    _emit_task_action = pyqtSignal(str, dict, str)
+    _emit_cursor_updated = pyqtSignal(str, float, float, str)
+    _emit_room_closed = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -26,6 +33,15 @@ class CollabClient(QObject):
         self.room_code = None
         self.user_name = "User"
         self.is_host = False
+        
+        self._emit_members_updated.connect(self.members_updated, Qt.ConnectionType.QueuedConnection)
+        self._emit_user_joined.connect(self.user_joined, Qt.ConnectionType.QueuedConnection)
+        self._emit_user_left.connect(self.user_left, Qt.ConnectionType.QueuedConnection)
+        self._emit_project_updated.connect(self.project_updated, Qt.ConnectionType.QueuedConnection)
+        self._emit_task_action.connect(self.task_action_received, Qt.ConnectionType.QueuedConnection)
+        self._emit_cursor_updated.connect(self.cursor_updated, Qt.ConnectionType.QueuedConnection)
+        self._emit_room_closed.connect(self.room_closed, Qt.ConnectionType.QueuedConnection)
+        
         self._setup_handlers()
 
     def _setup_handlers(self):
@@ -40,23 +56,23 @@ class CollabClient(QObject):
 
         @self.sio.on('members_updated')
         def on_members_updated(data):
-            self.members_updated.emit(data.get('members', []))
+            self._emit_members_updated.emit(data.get('members', []))
 
         @self.sio.on('user_joined')
         def on_user_joined(data):
-            self.user_joined.emit(data.get('id', ''), data.get('name', ''))
+            self._emit_user_joined.emit(data.get('id', ''), data.get('name', ''))
 
         @self.sio.on('user_left')
         def on_user_left(data):
-            self.user_left.emit(data.get('id', ''))
+            self._emit_user_left.emit(data.get('id', ''))
 
         @self.sio.on('project_updated')
         def on_project_updated(data):
-            self.project_updated.emit(data.get('projectData', {}))
+            self._emit_project_updated.emit(data.get('projectData', {}))
 
         @self.sio.on('task_action')
         def on_task_action(data):
-            self.task_action_received.emit(
+            self._emit_task_action.emit(
                 data.get('action', ''),
                 data.get('payload', {}),
                 data.get('from', '')
@@ -64,10 +80,10 @@ class CollabClient(QObject):
 
         @self.sio.on('cursor_update')
         def on_cursor_update(data):
-            self.cursor_updated.emit(
+            self._emit_cursor_updated.emit(
                 data.get('id', ''),
-                data.get('x', 0),
-                data.get('y', 0),
+                float(data.get('x', 0)),
+                float(data.get('y', 0)),
                 data.get('name', '')
             )
 
@@ -76,7 +92,7 @@ class CollabClient(QObject):
             self.room_id = None
             self.room_code = None
             self.is_host = False
-            self.room_closed.emit(data.get('message', 'Room closed'))
+            self._emit_room_closed.emit(data.get('message', 'Room closed'))
 
     def connect_to_server(self):
         try:
