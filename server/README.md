@@ -28,40 +28,39 @@ npm run start:prod
 
 #### Client -> Server
 
-- `create_room` - создать комнату
+- `create_room`
   - `{ name: string, projectData: object }`
   - Returns: `{ success: boolean, roomId: string, code: string }`
 
-- `join_room` - присоединиться к комнате
+- `join_room`
   - `{ code: string, name: string }`
   - Returns: `{ success: boolean, roomId: string, projectData: object, members: array }`
 
-- `leave_room` - покинуть комнату
+- `leave_room`
 
-- `sync_project` - синхронизировать проект
+- `sync_project`
   - `{ projectData: object }`
 
-- `task_action` - действие с задачей
+- `task_action`
   - `{ action: string, payload: object }`
 
-- `cursor_move` - движение курсора
+- `cursor_move`
   - `{ x: number, y: number, name: string }`
 
 #### Server -> Client
 
-- `members_updated` - обновление списка участников
-- `user_joined` - пользователь присоединился
-- `user_left` - пользователь вышел
-- `project_updated` - проект обновлён
-- `task_action` - действие с задачей от другого пользователя
-- `cursor_update` - обновление курсора другого пользователя
+- `members_updated`
+- `user_joined`
+- `user_left`
+- `project_updated`
+- `task_action`
+- `cursor_update`
 
 ## Деплой
 
 Сервер слушает порт 3000 на всех интерфейсах (0.0.0.0).
 
 ```bash
-# На сервере 144.31.221.20
 npm run build
 npm run start:prod
 ```

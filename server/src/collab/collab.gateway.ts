@@ -28,7 +28,6 @@ export class CollabGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
     const roomId = this.socketToRoom.get(client.id);
     if (roomId) {
       this.collabService.leaveRoom(roomId, client.id);
