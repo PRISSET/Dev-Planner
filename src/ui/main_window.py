@@ -730,7 +730,7 @@ class MainWindow(QMainWindow):
             to_idx = payload.get('to', -1)
             if 0 <= from_idx < len(self.canvas.nodes) and 0 <= to_idx < len(self.canvas.nodes):
                 from_node = self.canvas.nodes[from_idx]
-                to_node = self.canvas.nodes[to_idx]es[to_idx]
+                to_node = self.canvas.nodes[to_idx]
                 if (from_node, to_node) not in self.canvas.connections:
                     self.canvas.connections.append((from_node, to_node))
                     self.canvas.connection_overlay.update()
