@@ -12,7 +12,7 @@ from src.ui.ai_chat import AIChatPanel
 APP_VERSION = "beta v1.0.1"
 
 try:
-    from src.core.collab import CollabClient, CollabThread
+    from src.core.collab import CollabClient
     COLLAB_AVAILABLE = True
 except ImportError:
     COLLAB_AVAILABLE = False
@@ -634,9 +634,10 @@ class MainWindow(QMainWindow):
         name, ok = QInputDialog.getText(self, "Создать комнату", "Ваше имя:")
         if ok and name:
             project_data = self.canvas.get_project_data()
-            self.collab_thread = CollabThread(self.collab_client, 'create_room', 
-                                              name=name, project_data=project_data)
-            self.collab_thread.start()
+            try:
+                self.collab_client.create_room(name, project_data)
+            except Exception as e:
+                QMessageBox.warning(self, "Ошибка", str(e))
     
     def _join_collab_room(self):
         if not COLLAB_AVAILABLE:
@@ -647,14 +648,17 @@ class MainWindow(QMainWindow):
         if ok and code:
             name, ok2 = QInputDialog.getText(self, "Присоединиться", "Ваше имя:")
             if ok2 and name:
-                self.collab_thread = CollabThread(self.collab_client, 'join_room',
-                                                  code=code, name=name)
-                self.collab_thread.start()
+                try:
+                    self.collab_client.join_room(code, name)
+                except Exception as e:
+                    QMessageBox.warning(self, "Ошибка", str(e))
     
     def _leave_collab_room(self):
         if self.collab_client:
-            self.collab_thread = CollabThread(self.collab_client, 'leave_room')
-            self.collab_thread.start()
+            try:
+                self.collab_client.leave_room()
+            except Exception:
+                pass
             self.collab_code = None
             self.collab_status.setText("")
             self.collab_btn.setText("Пригласить")
@@ -752,8 +756,10 @@ class MainWindow(QMainWindow):
                                          "Закрыть комнату для всех участников?",
                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if reply == QMessageBox.StandardButton.Yes:
-                self.collab_thread = CollabThread(self.collab_client, 'close_room')
-                self.collab_thread.start()
+                try:
+                    self.collab_client.close_room()
+                except Exception:
+                    pass
                 self.collab_code = None
                 self.collab_status.setText("")
                 self.collab_btn.setText("Пригласить")

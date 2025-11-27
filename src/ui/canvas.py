@@ -358,13 +358,6 @@ class NodeCanvas(QWidget):
             self.update()
         elif self.connecting_from:
             self.connection_overlay.update()
-        
-        if self.main_window and hasattr(self.main_window, 'collab_client'):
-            client = self.main_window.collab_client
-            if client and client.in_room:
-                canvas_x = (event.position().x() - self.offset.x()) / self.scale
-                canvas_y = (event.position().y() - self.offset.y()) / self.scale
-                client.send_cursor_position(canvas_x, canvas_y)
     
     def mouseReleaseEvent(self, event):
         if event.button() in (Qt.MouseButton.MiddleButton, Qt.MouseButton.LeftButton):
@@ -381,27 +374,13 @@ class NodeCanvas(QWidget):
         self.connection_overlay.update()
     
     def update_remote_cursor(self, user_id, x, y, name):
-        if user_id not in self.remote_cursors:
-            color = self.CURSOR_COLORS[self.cursor_color_idx % len(self.CURSOR_COLORS)]
-            self.cursor_color_idx += 1
-            cursor = RemoteCursor(name, color, self)
-            self.remote_cursors[user_id] = cursor
-            cursor.show()
-        
-        cursor = self.remote_cursors[user_id]
-        screen_x = x * self.scale + self.offset.x()
-        screen_y = y * self.scale + self.offset.y()
-        cursor.move(int(screen_x), int(screen_y))
+        pass
     
     def remove_remote_cursor(self, user_id):
-        if user_id in self.remote_cursors:
-            self.remote_cursors[user_id].deleteLater()
-            del self.remote_cursors[user_id]
+        pass
     
     def clear_remote_cursors(self):
-        for cursor in self.remote_cursors.values():
-            cursor.deleteLater()
-        self.remote_cursors = {}
+        pass
     
     def get_stats(self):
         stats = {k: 0 for k in STATUSES.keys()}
