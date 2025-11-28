@@ -589,7 +589,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self.save_current_project()
         if self.collab_client:
-            self.collab_client.disconnect_from_server()
+            self.collab_client.cleanup()
         event.accept()
     
     def _setup_collab(self):
