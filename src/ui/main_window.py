@@ -340,6 +340,15 @@ class MainWindow(QMainWindow):
     def autosave(self):
         self.save_current_project()
         self.update_stats()
+        self._sync_collab_project()
+    
+    def _sync_collab_project(self):
+        try:
+            if self.collab_client and self.collab_client.in_room:
+                project_data = self.canvas.get_project_data()
+                self.collab_client.sync_project(project_data)
+        except Exception:
+            pass
     
     def update_stats(self):
         stats = self.canvas.get_stats()

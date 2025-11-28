@@ -185,13 +185,17 @@ class NodeCanvas(QWidget):
             self.line_animation_timer = None
         self.connection_overlay.update()
     
-    def complete_connection(self, target_node):
+    def complete_connection(self, target_node, sync_collab=True):
         if self.connecting_from and self.connecting_from != target_node:
             if (self.connecting_from, target_node) not in self.connections:
                 if (target_node, self.connecting_from) not in self.connections:
+                    from_idx = self.nodes.index(self.connecting_from) if self.connecting_from in self.nodes else -1
+                    to_idx = self.nodes.index(target_node) if target_node in self.nodes else -1
                     self.connections.append((self.connecting_from, target_node))
                     if self.main_window:
                         self.main_window.schedule_autosave()
+                        if sync_collab and from_idx >= 0 and to_idx >= 0:
+                            self._send_collab_action('connect_tasks', {'from': from_idx, 'to': to_idx})
         if self.hover_target:
             self.hover_target.set_hover_target(False)
             self.hover_target = None
@@ -358,6 +362,19 @@ class NodeCanvas(QWidget):
             self.update()
         elif self.connecting_from:
             self.connection_overlay.update()
+        
+        self._send_cursor_position(event.position())
+    
+    def _send_cursor_position(self, pos):
+        try:
+            if self.main_window and hasattr(self.main_window, 'collab_client'):
+                client = self.main_window.collab_client
+                if client and client.in_room:
+                    canvas_x = (pos.x() - self.offset.x()) / self.scale
+                    canvas_y = (pos.y() - self.offset.y()) / self.scale
+                    client.send_cursor_position(canvas_x, canvas_y)
+        except Exception:
+            pass
     
     def mouseReleaseEvent(self, event):
         if event.button() in (Qt.MouseButton.MiddleButton, Qt.MouseButton.LeftButton):
@@ -374,13 +391,36 @@ class NodeCanvas(QWidget):
         self.connection_overlay.update()
     
     def update_remote_cursor(self, user_id, x, y, name):
-        pass
+        try:
+            if user_id not in self.remote_cursors:
+                color = self.CURSOR_COLORS[self.cursor_color_idx % len(self.CURSOR_COLORS)]
+                self.cursor_color_idx += 1
+                cursor = RemoteCursor(name, color, self)
+                self.remote_cursors[user_id] = cursor
+                cursor.show()
+            
+            cursor = self.remote_cursors[user_id]
+            screen_x = x * self.scale + self.offset.x()
+            screen_y = y * self.scale + self.offset.y()
+            cursor.move(int(screen_x), int(screen_y))
+        except Exception:
+            pass
     
     def remove_remote_cursor(self, user_id):
-        pass
+        try:
+            if user_id in self.remote_cursors:
+                self.remote_cursors[user_id].deleteLater()
+                del self.remote_cursors[user_id]
+        except Exception:
+            pass
     
     def clear_remote_cursors(self):
-        pass
+        try:
+            for cursor in list(self.remote_cursors.values()):
+                cursor.deleteLater()
+            self.remote_cursors = {}
+        except Exception:
+            pass
     
     def get_stats(self):
         stats = {k: 0 for k in STATUSES.keys()}
