@@ -1,32 +1,8 @@
 from PyQt6.QtWidgets import QWidget, QGestureEvent, QPinchGesture
-from PyQt6.QtCore import Qt, QPoint, QPointF, QTimer, pyqtSignal, QObject
-from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPen, QBrush, QLinearGradient, QFont
+from PyQt6.QtCore import Qt, QPoint, QPointF, QTimer
+from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPen, QBrush, QLinearGradient
 from src.core.config import STATUSES
 from src.core.task_node import TaskNode
-
-
-class RemoteCursor(QWidget):
-    def __init__(self, name, color, parent=None):
-        super().__init__(parent)
-        self.name = name
-        self.color = color
-        self.setFixedSize(120, 24)
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-    
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenType.NoPen)
-        painter.setBrush(QColor(self.color))
-        painter.drawEllipse(0, 4, 10, 10)
-        font = QFont()
-        font.setPointSize(9)
-        font.setBold(True)
-        painter.setFont(font)
-        painter.setPen(QColor(self.color))
-        painter.drawText(14, 14, self.name[:12])
-        painter.end()
 
 
 class ConnectionOverlay(QWidget):
@@ -77,8 +53,6 @@ class ConnectionOverlay(QWidget):
 
 
 class NodeCanvas(QWidget):
-    CURSOR_COLORS = ["#ff6b6b", "#4ecdc4", "#ffe66d", "#95e1d3", "#f38181", "#aa96da", "#fcbad3", "#a8d8ea"]
-    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.nodes = []
@@ -93,8 +67,6 @@ class NodeCanvas(QWidget):
         self.hover_target = None
         self.line_dash_offset = 0
         self.line_animation_timer = None
-        self.remote_cursors = {}
-        self.cursor_color_idx = 0
         
         self.setMinimumSize(800, 600)
         self.setMouseTracking(True)
@@ -150,10 +122,7 @@ class NodeCanvas(QWidget):
         self.update()
     
     def _send_collab_action(self, action, payload):
-        if self.main_window and hasattr(self.main_window, 'collab_client'):
-            client = self.main_window.collab_client
-            if client and client.in_room:
-                client.send_task_action(action, payload)
+        pass
     
     def update_node_position(self, node):
         screen_x = node.node_x * self.scale + self.offset.x()
@@ -366,19 +335,6 @@ class NodeCanvas(QWidget):
             self.update()
         elif self.connecting_from:
             self.connection_overlay.update()
-        
-        self._send_cursor_position(event.position())
-    
-    def _send_cursor_position(self, pos):
-        try:
-            if self.main_window and hasattr(self.main_window, 'collab_client'):
-                client = self.main_window.collab_client
-                if client and client.in_room:
-                    canvas_x = (pos.x() - self.offset.x()) / self.scale
-                    canvas_y = (pos.y() - self.offset.y()) / self.scale
-                    client.send_cursor_position(canvas_x, canvas_y)
-        except Exception:
-            pass
     
     def mouseReleaseEvent(self, event):
         if event.button() in (Qt.MouseButton.MiddleButton, Qt.MouseButton.LeftButton):
@@ -395,46 +351,13 @@ class NodeCanvas(QWidget):
         self.connection_overlay.update()
     
     def update_remote_cursor(self, user_id, x, y, name):
-        QTimer.singleShot(0, lambda: self._do_update_cursor(user_id, x, y, name))
-    
-    def _do_update_cursor(self, user_id, x, y, name):
-        try:
-            if user_id not in self.remote_cursors:
-                color = self.CURSOR_COLORS[self.cursor_color_idx % len(self.CURSOR_COLORS)]
-                self.cursor_color_idx += 1
-                cursor = RemoteCursor(name, color, self)
-                self.remote_cursors[user_id] = cursor
-                cursor.show()
-                cursor.raise_()
-            
-            cursor = self.remote_cursors[user_id]
-            screen_x = x * self.scale + self.offset.x()
-            screen_y = y * self.scale + self.offset.y()
-            cursor.move(int(screen_x), int(screen_y))
-        except Exception:
-            pass
+        pass
     
     def remove_remote_cursor(self, user_id):
-        QTimer.singleShot(0, lambda: self._do_remove_cursor(user_id))
-    
-    def _do_remove_cursor(self, user_id):
-        try:
-            if user_id in self.remote_cursors:
-                self.remote_cursors[user_id].deleteLater()
-                del self.remote_cursors[user_id]
-        except Exception:
-            pass
+        pass
     
     def clear_remote_cursors(self):
-        QTimer.singleShot(0, self._do_clear_cursors)
-    
-    def _do_clear_cursors(self):
-        try:
-            for cursor in list(self.remote_cursors.values()):
-                cursor.deleteLater()
-            self.remote_cursors = {}
-        except Exception:
-            pass
+        pass
     
     def get_stats(self):
         stats = {k: 0 for k in STATUSES.keys()}
