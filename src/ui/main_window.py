@@ -682,6 +682,9 @@ class MainWindow(QMainWindow):
         self.collab_btn.setText("Пригласить")
     
     def _on_room_created(self, room_id, code):
+        QTimer.singleShot(0, lambda: self._do_room_created(code))
+    
+    def _do_room_created(self, code):
         self.collab_code = code
         self.collab_status.setText(f"● Комната: {code}")
         self.collab_btn.setText("Комната")
@@ -689,6 +692,9 @@ class MainWindow(QMainWindow):
                                f"Код для приглашения:\n\n{code}\n\nПоделитесь этим кодом с другими участниками")
     
     def _on_room_joined(self, room_id, project_data, members):
+        QTimer.singleShot(0, lambda: self._do_room_joined(project_data, members))
+    
+    def _do_room_joined(self, project_data, members):
         self.collab_code = None
         self.collab_status.setText(f"● Подключено ({len(members)})")
         self.collab_btn.setText("Комната")
@@ -697,12 +703,15 @@ class MainWindow(QMainWindow):
             self.update_stats()
     
     def _on_join_failed(self, message):
-        QMessageBox.warning(self, "Ошибка", f"Не удалось присоединиться: {message}")
+        QTimer.singleShot(0, lambda: QMessageBox.warning(self, "Ошибка", f"Не удалось присоединиться: {message}"))
     
     def _on_members_updated(self, members):
-        self.collab_status.setText(f"● Подключено ({len(members)})")
+        QTimer.singleShot(0, lambda: self.collab_status.setText(f"● Подключено ({len(members)})"))
     
     def _on_project_updated(self, project_data):
+        QTimer.singleShot(0, lambda: self._do_project_updated(project_data))
+    
+    def _do_project_updated(self, project_data):
         if project_data:
             self.canvas.load_project_data(project_data)
             self.update_stats()
@@ -714,45 +723,54 @@ class MainWindow(QMainWindow):
         self.canvas.remove_remote_cursor(user_id)
     
     def _on_task_action_received(self, action, payload, from_id):
-        if action == 'create_task':
-            node = self.canvas.add_node_silent(payload.get('x', 100), payload.get('y', 100))
-            node.title_edit.setText(payload.get('title', 'Задача'))
-            node.desc_edit.setPlainText(payload.get('description', ''))
-            if payload.get('status') in STATUSES:
-                node.set_status(payload.get('status'))
-        elif action == 'delete_task':
-            idx = payload.get('index', -1)
-            if 0 <= idx < len(self.canvas.nodes):
-                self.canvas.remove_node_silent(self.canvas.nodes[idx])
-        elif action == 'update_task':
-            idx = payload.get('index', -1)
-            if 0 <= idx < len(self.canvas.nodes):
-                node = self.canvas.nodes[idx]
-                if 'title' in payload:
-                    node.title_edit.setText(payload['title'])
-                if 'description' in payload:
-                    node.desc_edit.setPlainText(payload['description'])
-                if 'status' in payload and payload['status'] in STATUSES:
-                    node.set_status(payload['status'])
-                if 'x' in payload and 'y' in payload:
-                    node.node_x = payload['x']
-                    node.node_y = payload['y']
-                    self.canvas.update_node_position(node)
-        elif action == 'connect_tasks':
-            from_idx = payload.get('from', -1)
-            to_idx = payload.get('to', -1)
-            if 0 <= from_idx < len(self.canvas.nodes) and 0 <= to_idx < len(self.canvas.nodes):
-                from_node = self.canvas.nodes[from_idx]
-                to_node = self.canvas.nodes[to_idx]
-                if (from_node, to_node) not in self.canvas.connections:
-                    self.canvas.connections.append((from_node, to_node))
-                    self.canvas.connection_overlay.update()
-        elif action == 'full_sync':
-            if payload.get('projectData'):
-                self.canvas.load_project_data(payload['projectData'])
-        self.update_stats()
+        QTimer.singleShot(0, lambda: self._do_task_action(action, payload))
+    
+    def _do_task_action(self, action, payload):
+        try:
+            if action == 'create_task':
+                node = self.canvas.add_node_silent(payload.get('x', 100), payload.get('y', 100))
+                node.title_edit.setText(payload.get('title', 'Задача'))
+                node.desc_edit.setPlainText(payload.get('description', ''))
+                if payload.get('status') in STATUSES:
+                    node.set_status(payload.get('status'))
+            elif action == 'delete_task':
+                idx = payload.get('index', -1)
+                if 0 <= idx < len(self.canvas.nodes):
+                    self.canvas.remove_node_silent(self.canvas.nodes[idx])
+            elif action == 'update_task':
+                idx = payload.get('index', -1)
+                if 0 <= idx < len(self.canvas.nodes):
+                    node = self.canvas.nodes[idx]
+                    if 'title' in payload:
+                        node.title_edit.setText(payload['title'])
+                    if 'description' in payload:
+                        node.desc_edit.setPlainText(payload['description'])
+                    if 'status' in payload and payload['status'] in STATUSES:
+                        node.set_status(payload['status'])
+                    if 'x' in payload and 'y' in payload:
+                        node.node_x = payload['x']
+                        node.node_y = payload['y']
+                        self.canvas.update_node_position(node)
+            elif action == 'connect_tasks':
+                from_idx = payload.get('from', -1)
+                to_idx = payload.get('to', -1)
+                if 0 <= from_idx < len(self.canvas.nodes) and 0 <= to_idx < len(self.canvas.nodes):
+                    from_node = self.canvas.nodes[from_idx]
+                    to_node = self.canvas.nodes[to_idx]
+                    if (from_node, to_node) not in self.canvas.connections:
+                        self.canvas.connections.append((from_node, to_node))
+                        self.canvas.connection_overlay.update()
+            elif action == 'full_sync':
+                if payload.get('projectData'):
+                    self.canvas.load_project_data(payload['projectData'])
+            self.update_stats()
+        except Exception:
+            pass
     
     def _on_room_closed(self, message):
+        QTimer.singleShot(0, lambda: self._do_room_closed(message))
+    
+    def _do_room_closed(self, message):
         self.collab_code = None
         self.collab_status.setText("")
         self.collab_btn.setText("Пригласить")
@@ -774,4 +792,4 @@ class MainWindow(QMainWindow):
                 self.collab_btn.setText("Пригласить")
     
     def _on_collab_error(self, message):
-        QMessageBox.warning(self, "Ошибка подключения", message)
+        QTimer.singleShot(0, lambda: QMessageBox.warning(self, "Ошибка подключения", message))

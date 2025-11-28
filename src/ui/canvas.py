@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QGestureEvent, QPinchGesture
-from PyQt6.QtCore import Qt, QPoint, QPointF, QTimer
-from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPen, QBrush, QLinearGradient
+from PyQt6.QtCore import Qt, QPoint, QPointF, QTimer, pyqtSignal, QObject
+from PyQt6.QtGui import QPainter, QPainterPath, QColor, QPen, QBrush, QLinearGradient, QFont
 from src.core.config import STATUSES
 from src.core.task_node import TaskNode
 
@@ -10,7 +10,7 @@ class RemoteCursor(QWidget):
         super().__init__(parent)
         self.name = name
         self.color = color
-        self.setFixedSize(100, 30)
+        self.setFixedSize(120, 24)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
     
@@ -19,9 +19,13 @@ class RemoteCursor(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenType.NoPen)
         painter.setBrush(QColor(self.color))
-        painter.drawEllipse(0, 0, 12, 12)
+        painter.drawEllipse(0, 4, 10, 10)
+        font = QFont()
+        font.setPointSize(9)
+        font.setBold(True)
+        painter.setFont(font)
         painter.setPen(QColor(self.color))
-        painter.drawText(16, 10, self.name[:10])
+        painter.drawText(14, 14, self.name[:12])
         painter.end()
 
 
@@ -391,6 +395,9 @@ class NodeCanvas(QWidget):
         self.connection_overlay.update()
     
     def update_remote_cursor(self, user_id, x, y, name):
+        QTimer.singleShot(0, lambda: self._do_update_cursor(user_id, x, y, name))
+    
+    def _do_update_cursor(self, user_id, x, y, name):
         try:
             if user_id not in self.remote_cursors:
                 color = self.CURSOR_COLORS[self.cursor_color_idx % len(self.CURSOR_COLORS)]
@@ -398,6 +405,7 @@ class NodeCanvas(QWidget):
                 cursor = RemoteCursor(name, color, self)
                 self.remote_cursors[user_id] = cursor
                 cursor.show()
+                cursor.raise_()
             
             cursor = self.remote_cursors[user_id]
             screen_x = x * self.scale + self.offset.x()
@@ -407,6 +415,9 @@ class NodeCanvas(QWidget):
             pass
     
     def remove_remote_cursor(self, user_id):
+        QTimer.singleShot(0, lambda: self._do_remove_cursor(user_id))
+    
+    def _do_remove_cursor(self, user_id):
         try:
             if user_id in self.remote_cursors:
                 self.remote_cursors[user_id].deleteLater()
@@ -415,6 +426,9 @@ class NodeCanvas(QWidget):
             pass
     
     def clear_remote_cursors(self):
+        QTimer.singleShot(0, self._do_clear_cursors)
+    
+    def _do_clear_cursors(self):
         try:
             for cursor in list(self.remote_cursors.values()):
                 cursor.deleteLater()
