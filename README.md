@@ -78,10 +78,12 @@ python main.py
 Для решения выполните в терминале:
 
 ```bash
+# Снять карантин с DMG-файла перед открытием
+xattr -cr ~/Downloads/Dev\ Planner.dmg
 
-xattr -cr ~/Downloads/Dev.Planner.dmg
-
-
+# Или снять карантин с уже установленного приложения
+xattr -cr /Applications/Dev\ Planner.app
+```
 
 После этого приложение запустится без проблем.
 
