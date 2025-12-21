@@ -71,16 +71,13 @@ void NodeCanvas::clearAll() {
 }
 
 void NodeCanvas::updateNodePosition(TaskNode *n) {
-  n->move(n->nodeX() * m_scale + m_offset.x(),
-          n->nodeY() * m_scale + m_offset.y());
-  n->updateScale(m_scale);
+  n->move(static_cast<int>(n->nodeX() * m_scale + m_offset.x()),
+          static_cast<int>(n->nodeY() * m_scale + m_offset.y()));
 }
 
 void NodeCanvas::updateAllNodes() {
-  setUpdatesEnabled(false);
   for (auto *n : m_nodes)
     updateNodePosition(n);
-  setUpdatesEnabled(true);
   update();
 }
 
@@ -150,7 +147,10 @@ void NodeCanvas::applyZoom(qreal f, const QPointF &p) {
   m_scale = qBound(0.2, m_scale * f, 4.0);
   if (old != m_scale) {
     m_offset = p - (p - m_offset) * (m_scale / old);
-    updateAllNodes();
+    for (auto *n : m_nodes) {
+      n->updateScale(m_scale);
+      updateNodePosition(n);
+    }
     update();
     emit zoomChanged(static_cast<int>(m_scale * 100));
   }
@@ -160,7 +160,10 @@ void NodeCanvas::zoomOut() { applyZoom(0.8, rect().center()); }
 void NodeCanvas::zoomReset() {
   m_scale = 1.0;
   m_offset = QPointF(0, 0);
-  updateAllNodes();
+  for (auto *n : m_nodes) {
+    n->updateScale(m_scale);
+    updateNodePosition(n);
+  }
   update();
   emit zoomChanged(100);
 }
@@ -173,19 +176,21 @@ QMap<QString, int> NodeCanvas::getStats() const {
 
 void NodeCanvas::paintEvent(QPaintEvent *e) {
   QPainter p(this);
-  p.setRenderHint(QPainter::Antialiasing);
+  p.setRenderHint(QPainter::Antialiasing, false);
 
   int gs = static_cast<int>(50 * m_scale);
-  if (gs > 10) {
-    p.setPen(QPen(QColor(255, 255, 255, 15), 1));
-    int sx = static_cast<int>(std::fmod(m_offset.x(), gs));
-    int sy = static_cast<int>(std::fmod(m_offset.y(), gs));
-    for (int x = sx; x < width(); x += gs)
-      p.drawLine(x, 0, x, height());
-    for (int y = sy; y < height(); y += gs)
-      p.drawLine(0, y, width(), y);
+  if (gs > 15) {
+    p.setPen(QPen(QColor(255, 255, 255, 12), 1));
+    int sx = static_cast<int>(m_offset.x()) % gs;
+    int sy = static_cast<int>(m_offset.y()) % gs;
+    int w = width(), h = height();
+    for (int x = sx; x < w; x += gs)
+      p.drawLine(x, 0, x, h);
+    for (int y = sy; y < h; y += gs)
+      p.drawLine(0, y, w, y);
   }
 
+  p.setRenderHint(QPainter::Antialiasing, true);
   for (const auto &conn : m_connections) {
     drawConnection(p, conn.first, conn.second);
   }
