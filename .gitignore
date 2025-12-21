@@ -21,3 +21,18 @@ ENV/
 *.swp
 *.swo
 *~
+
+# C++ Build
+cpp/build/
+*.o
+*.a
+*.dylib
+*.app
+*.dmg
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+moc_*
+ui_*
+*_autogen/

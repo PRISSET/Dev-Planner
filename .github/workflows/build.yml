@@ -1,4 +1,4 @@
-name: Build Dev Planner
+name: Build Dev Planner C++
 
 on:
   push:
@@ -12,85 +12,88 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
         with:
-          python-version: '3.11'
+          version: '6.6.0'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2019_64'
+          modules: 'qtnetworkauth'
       
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller pillow
-          pip install -r req.txt
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
       
-      - name: Convert icon to ICO
+      - name: Configure CMake
         run: |
-          python -c "from PIL import Image; img = Image.open('icon.iconset/icon_256x256.png'); img.save('icon.ico', format='ICO', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])"
+          cd cpp
+          mkdir build
+          cd build
+          cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
       
-      - name: Build Windows EXE
+      - name: Build
         run: |
-          pyinstaller --name "Dev Planner" --windowed --onefile --icon=icon.ico --add-data "src;src" main.py
+          cd cpp/build
+          nmake
+      
+      - name: Deploy Qt dependencies
+        run: |
+          cd cpp/build
+          windeployqt --release --no-translations DevPlanner.exe
+      
+      - name: Create ZIP
+        run: |
+          cd cpp/build
+          Compress-Archive -Path DevPlanner.exe,*.dll,platforms,styles,imageformats -DestinationPath Dev.Planner.Windows.zip
       
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: Dev-Planner-Windows
-          path: dist/Dev Planner.exe
+          path: cpp/build/Dev.Planner.Windows.zip
 
   build-macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
         with:
-          python-version: '3.11'
+          version: '6.6.0'
+          host: 'mac'
+          target: 'desktop'
+          arch: 'clang_64'
+          modules: 'qtnetworkauth'
       
-      - name: Install dependencies
+      - name: Configure CMake
         run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller dmgbuild
-          pip install -r req.txt
+          cd cpp
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
       
-      - name: Build macOS App
+      - name: Build
         run: |
-          pyinstaller --name "Dev Planner" --windowed --onedir --icon=icon.icns --add-data "src:src" main.py
+          cd cpp/build
+          make -j$(sysctl -n hw.ncpu)
       
-      - name: Create App Bundle
+      - name: Deploy Qt dependencies
         run: |
-          mkdir -p "dist/Dev Planner.app/Contents/MacOS"
-          mkdir -p "dist/Dev Planner.app/Contents/Resources"
-          cp -R "dist/Dev Planner/"* "dist/Dev Planner.app/Contents/MacOS/"
-          cp icon.icns "dist/Dev Planner.app/Contents/Resources/"
-          cat > "dist/Dev Planner.app/Contents/Info.plist" << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleExecutable</key>
-            <string>Dev Planner</string>
-            <key>CFBundleIconFile</key>
-            <string>icon.icns</string>
-            <key>CFBundleIdentifier</key>
-            <string>com.devplanner.app</string>
-            <key>CFBundleName</key>
-            <string>Dev Planner</string>
-            <key>CFBundleVersion</key>
-            <string>1.0.1</string>
-          </dict>
-          </plist>
-          EOF
+          cd cpp/build
+          macdeployqt DevPlanner.app -dmg
       
-      - name: Create DMG
+      - name: Rename DMG
         run: |
-          dmgbuild -s dmg_settings.py "Dev Planner" "dist/Dev Planner.dmg"
+          mv cpp/build/DevPlanner.dmg cpp/build/Dev.Planner.dmg
       
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: Dev-Planner-macOS
-          path: dist/Dev Planner.dmg
+          path: cpp/build/Dev.Planner.dmg
 
   release:
     needs: [build-windows, build-macos]
@@ -103,15 +106,16 @@ jobs:
         uses: actions/download-artifact@v4
       
       - name: List files
-        run: find . -type f -name "*.exe" -o -name "*.dmg"
+        run: find . -type f
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            Dev-Planner-Windows/Dev Planner.exe
-            Dev-Planner-macOS/Dev Planner.dmg
+            Dev-Planner-Windows/Dev.Planner.Windows.zip
+            Dev-Planner-macOS/Dev.Planner.dmg
           draft: false
           prerelease: false
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
