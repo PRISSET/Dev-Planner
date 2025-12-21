@@ -111,6 +111,7 @@ private slots:
 private:
   void applyZoom(qreal factor, const QPointF &mousePos);
   void drawConnection(QPainter &painter, TaskNode *node1, TaskNode *node2);
+  void updateBlobs();
 
   QList<TaskNode *> m_nodes;
   QList<QPair<TaskNode *, TaskNode *>> m_connections;
@@ -129,6 +130,15 @@ private:
   QTimer *m_lineAnimationTimer = nullptr;
 
   ConnectionOverlay *m_connectionOverlay;
+
+  struct Blob {
+    QPointF pos;
+    QPointF velocity;
+    qreal radius;
+    QColor color;
+  };
+  QList<Blob> m_blobs;
+  QTimer *m_blobTimer = nullptr;
 
   friend class ConnectionOverlay;
 };

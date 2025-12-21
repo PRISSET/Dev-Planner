@@ -9,23 +9,10 @@
 
 namespace DevPlanner {
 
-struct NebulaBlob {
-  QPointF pos;
-  QPointF velocity;
-  qreal baseRadius;
-  qreal currentRadius;
-  QColor color;
-  qreal pulsePhase;
-  qreal pulseSpeed;
-};
-
 class LiveBackground : public QWidget {
   Q_OBJECT
 public:
   explicit LiveBackground(QWidget *parent = nullptr);
-
-  void pause();
-  void resume();
 
 protected:
   void paintEvent(QPaintEvent *event) override;
@@ -35,14 +22,19 @@ private slots:
   void updateAnimation();
 
 private:
-  void initBlobs();
+  struct Blob {
+    QPointF pos;
+    QPointF velocity;
+    qreal radius;
+    QColor color;
+    qreal phase;
+  };
 
+  QList<Blob> m_blobs;
   QTimer *m_timer;
-  QList<NebulaBlob> m_blobs;
-  qreal m_time;
-  bool m_paused = false;
+  qreal m_time = 0;
 };
 
 } // namespace DevPlanner
 
-#endif // LIVE_BACKGROUND_HPP
+#endif

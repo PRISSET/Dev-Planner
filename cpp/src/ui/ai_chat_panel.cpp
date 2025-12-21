@@ -321,6 +321,15 @@ QString AIChatPanel::executeAction(const QJsonObject &data) {
     return QString("✓ Соединено %1 → %2")
         .arg(data["from"].toInt())
         .arg(data["to"].toInt());
+  } else if (a == "connect_many") {
+    QJsonArray conns = data["connections"].toArray();
+    for (const auto &c : conns) {
+      QJsonArray pair = c.toArray();
+      if (pair.size() >= 2) {
+        emit tasksConnect(pair[0].toInt() - 1, pair[1].toInt() - 1);
+      }
+    }
+    return QString("✓ Соединено %1 связей").arg(conns.size());
   } else if (a == "disconnect") {
     emit disconnectTasks(data["from"].toInt() - 1, data["to"].toInt() - 1);
     return QString("✓ Разъединено");
@@ -332,7 +341,9 @@ QString AIChatPanel::executeAction(const QJsonObject &data) {
     for (const auto &t : data["tasks"].toArray()) {
       emit taskUpdateStatus(t.toInt() - 1, status);
     }
-    return QString("✓ Статус → %1").arg(status);
+    return QString("✓ Статус %1 задач → %2")
+        .arg(data["tasks"].toArray().size())
+        .arg(status);
   } else if (a == "rename") {
     emit taskRename(data["task"].toInt() - 1, data["title"].toString());
     return QString("✓ Переименовано");
@@ -358,7 +369,9 @@ QString AIChatPanel::executeAction(const QJsonObject &data) {
     return "✓ Список задач";
   } else if (a.startsWith("arrange_")) {
     emit arrangeTasks(a.mid(8));
-    return QString("✓ %1").arg(a.mid(8));
+    return QString("✓ Расставлено: %1").arg(a.mid(8));
+  } else if (!a.isEmpty()) {
+    return QString("⚠ Неизвестное действие: %1").arg(a);
   }
   return "";
 }

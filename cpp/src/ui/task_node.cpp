@@ -16,6 +16,7 @@ TaskNode::TaskNode(qreal x, qreal y, NodeCanvas *canvas, const QString &title,
     : GlassmorphismWidget(parent), m_canvas(canvas), m_nodeX(x), m_nodeY(y) {
   setFixedSize(BASE_WIDTH, BASE_HEIGHT);
   setMouseTracking(true);
+  setAttribute(Qt::WA_TranslucentBackground);
   move(static_cast<int>(x), static_cast<int>(y));
   setupUI(title);
   show();
@@ -159,15 +160,19 @@ void TaskNode::setHoverTarget(bool t) {
 }
 
 void TaskNode::paintEvent(QPaintEvent *event) {
+  Q_UNUSED(event);
   QPainter painter(this);
-  painter.setRenderHint(QPainter::Antialiasing, false);
+  painter.setRenderHint(QPainter::Antialiasing, true);
+
   QColor statusColor(getStatuses()[m_status].color);
   QPainterPath path;
-  path.addRoundedRect(rect().adjusted(1, 1, -1, -1), 12, 12);
+  path.addRoundedRect(rect().adjusted(1, 1, -1, -1), 16, 16);
 
-  painter.fillPath(path, QColor(12, 12, 18));
+  painter.setClipPath(path);
+  painter.fillPath(path, QColor(12, 12, 20, 250));
 
-  QPen pen(m_isHoverTarget ? statusColor : QColor(50, 50, 60),
+  painter.setClipping(false);
+  QPen pen(m_isHoverTarget ? statusColor : QColor(60, 60, 80),
            m_isHoverTarget ? 2 : 1);
   painter.setPen(pen);
   painter.drawPath(path);

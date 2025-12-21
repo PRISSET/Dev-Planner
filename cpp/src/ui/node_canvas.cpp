@@ -7,6 +7,8 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPinchGesture>
+#include <QRadialGradient>
+#include <QRandomGenerator>
 #include <QWheelEvent>
 
 namespace DevPlanner {
@@ -25,8 +27,28 @@ NodeCanvas::NodeCanvas(QWidget *parent) : QWidget(parent) {
   setMouseTracking(true);
   setFocusPolicy(Qt::StrongFocus);
   setAttribute(Qt::WA_AcceptTouchEvents, true);
+  setAttribute(Qt::WA_OpaquePaintEvent, true);
   grabGesture(Qt::PinchGesture);
   m_connectionOverlay = new ConnectionOverlay(this);
+
+  QList<QColor> colors = {QColor(138, 43, 226, 35), QColor(180, 0, 180, 30),
+                          QColor(100, 20, 200, 35), QColor(200, 0, 120, 30),
+                          QColor(60, 0, 160, 35),   QColor(0, 100, 180, 25)};
+
+  auto *rng = QRandomGenerator::global();
+  for (int i = 0; i < 6; ++i) {
+    Blob b;
+    b.pos = QPointF(rng->bounded(1920), rng->bounded(1080));
+    b.velocity = QPointF((rng->bounded(200) - 100) / 80.0,
+                         (rng->bounded(200) - 100) / 80.0);
+    b.radius = 300 + rng->bounded(200);
+    b.color = colors[i];
+    m_blobs.append(b);
+  }
+
+  m_blobTimer = new QTimer(this);
+  connect(m_blobTimer, &QTimer::timeout, this, &NodeCanvas::updateBlobs);
+  m_blobTimer->start(33);
 }
 
 NodeCanvas::~NodeCanvas() { clearAll(); }
@@ -175,8 +197,18 @@ QMap<QString, int> NodeCanvas::getStats() const {
 }
 
 void NodeCanvas::paintEvent(QPaintEvent *e) {
+  Q_UNUSED(e);
   QPainter p(this);
   p.setRenderHint(QPainter::Antialiasing, false);
+
+  p.fillRect(rect(), QColor(8, 8, 15));
+
+  for (const auto &b : m_blobs) {
+    QRadialGradient grad(b.pos, b.radius);
+    grad.setColorAt(0, b.color);
+    grad.setColorAt(1, Qt::transparent);
+    p.fillRect(rect(), grad);
+  }
 
   int gs = static_cast<int>(50 * m_scale);
   if (gs > 15) {
@@ -330,6 +362,21 @@ void NodeCanvas::loadProjectData(const QJsonObject &d) {
     auto c = cv.toArray();
     if (c.size() == 2)
       addConnection(m_nodes[c[0].toInt()], m_nodes[c[1].toInt()]);
+  }
+  update();
+}
+
+void NodeCanvas::updateBlobs() {
+  for (auto &b : m_blobs) {
+    b.pos += b.velocity;
+    if (b.pos.x() < -b.radius)
+      b.pos.setX(width() + b.radius);
+    if (b.pos.x() > width() + b.radius)
+      b.pos.setX(-b.radius);
+    if (b.pos.y() < -b.radius)
+      b.pos.setY(height() + b.radius);
+    if (b.pos.y() > height() + b.radius)
+      b.pos.setY(-b.radius);
   }
   update();
 }
