@@ -51,7 +51,9 @@ jobs:
       - name: Create Installer
         run: |
           cd cpp/build
-          & "C:\Program Files (x86)\NSIS\makensis.exe" /DVERSION="${{ github.ref_name }}" ../installer/windows.nsi
+          Copy-Item ../installer/windows.nsi .
+          Copy-Item ../../LICENSE .
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /DVERSION="${{ github.ref_name }}" windows.nsi
       
       - name: Rename installer
         run: |
