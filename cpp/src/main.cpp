@@ -1,22 +1,16 @@
-#include "ai/ai_action_registry.hpp"
 #include "ui/main_window.hpp"
 #include <QApplication>
 
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
-  DevPlanner::registerAllActions();
-
-  // Set application metadata
   QApplication::setApplicationName("Dev Planner");
-  QApplication::setApplicationVersion("2.0.0");
+  QApplication::setApplicationVersion("2.1.0");
   QApplication::setOrganizationName("DevPlanner");
   QApplication::setOrganizationDomain("dev-planner.local");
 
-  // Enable high DPI scaling
   app.setStyle("Fusion");
 
-  // Set global dark palette for native dialogs
   QPalette darkPalette;
   darkPalette.setColor(QPalette::Window, QColor(26, 26, 30));
   darkPalette.setColor(QPalette::WindowText, Qt::white);

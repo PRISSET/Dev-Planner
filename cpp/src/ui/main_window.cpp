@@ -1,5 +1,4 @@
 #include "main_window.hpp"
-#include "ai_chat_panel.hpp"
 #include "core/config.hpp"
 #include "core/storage.hpp"
 #include "glassmorphism_widget.hpp"
@@ -8,7 +7,6 @@
 #include "node_canvas.hpp"
 #include "task_node.hpp"
 #include <QCloseEvent>
-#include <QFileDialog>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QListWidgetItem>
@@ -17,8 +15,6 @@
 #include <QScrollArea>
 #include <QSplitter>
 #include <QVBoxLayout>
-#include <cmath>
-#include <random>
 
 namespace DevPlanner {
 
@@ -95,8 +91,6 @@ void MainWindow::setupToolbar(QVBoxLayout *layout) {
   l->addWidget(zIn);
   l->addSpacing(20);
 
-  auto *exp = new ModernButton("EXPORT", QColor(217, 0, 255, 100), this);
-  connect(exp, &QPushButton::clicked, this, &MainWindow::exportTZ);
   auto *clr = new ModernButton("CLEAR", QColor(255, 0, 85, 100), this);
   connect(clr, &QPushButton::clicked, this, &MainWindow::clearAll);
   m_noteModeBtn = new ModernButton("NOTE", QColor(0, 200, 150, 100), this);
@@ -107,7 +101,6 @@ void MainWindow::setupToolbar(QVBoxLayout *layout) {
     if (m_canvas)
       m_canvas->setNoteMode(checked);
   });
-  l->addWidget(exp);
   l->addWidget(clr);
   l->addWidget(m_noteModeBtn);
   l->addStretch();
@@ -133,21 +126,10 @@ void MainWindow::setupContent(QVBoxLayout *layout) {
   setupProjectsPanel(s);
   m_canvas = new NodeCanvas(this);
   connect(m_canvas, &NodeCanvas::changed, this, &MainWindow::scheduleAutosave);
-  connect(m_canvas, &NodeCanvas::changed, this, [this]() {
-    QString ctx;
-    int idx = 1;
-    for (auto *n : m_canvas->nodes()) {
-      ctx +=
-          QString("%1. %2 [%3]\n").arg(idx++).arg(n->title()).arg(n->status());
-    }
-    m_aiChat->setTasksInfo(ctx);
-    m_aiChat->setTaskCounter(m_canvas->nodes().size());
-  });
   connect(m_canvas, &NodeCanvas::zoomChanged, this,
           &MainWindow::updateZoomLabel);
   s->addWidget(m_canvas);
-  setupAIPanel(s);
-  s->setSizes({220, 800, 380});
+  s->setSizes({220, 1180});
   layout->addWidget(s, 1);
 }
 
@@ -178,37 +160,6 @@ void MainWindow::setupProjectsPanel(QSplitter *s) {
   s->addWidget(m_projectsPanel);
 }
 
-void MainWindow::setupAIPanel(QSplitter *s) {
-  m_aiPanel = new GlassmorphismWidget(this);
-  auto *l = new QVBoxLayout(m_aiPanel);
-  l->setContentsMargins(0, 0, 0, 0);
-  m_aiChat = new AIChatPanel(this);
-  connect(m_aiChat, &AIChatPanel::taskCreated, this,
-          &MainWindow::onAITaskCreated);
-  connect(m_aiChat, &AIChatPanel::tasksConnect, this,
-          &MainWindow::onAITasksConnect);
-  connect(m_aiChat, &AIChatPanel::taskUpdateStatus, this,
-          &MainWindow::onAITaskUpdateStatus);
-  connect(m_aiChat, &AIChatPanel::taskUpdateDesc, this,
-          &MainWindow::onAITaskUpdateDesc);
-  connect(m_aiChat, &AIChatPanel::taskRename, this,
-          &MainWindow::onAITaskRename);
-  connect(m_aiChat, &AIChatPanel::taskDelete, this,
-          &MainWindow::onAITaskDelete);
-  connect(m_aiChat, &AIChatPanel::tasksDeleteMany, this,
-          &MainWindow::onAITasksDeleteMany);
-  connect(m_aiChat, &AIChatPanel::clearAllTasks, this,
-          &MainWindow::onAIClearAll);
-  connect(m_aiChat, &AIChatPanel::requestTasks, this,
-          &MainWindow::onAIRequestTasks);
-  connect(m_aiChat, &AIChatPanel::arrangeTasks, this,
-          &MainWindow::onAIArrangeTasks);
-  connect(m_aiChat, &AIChatPanel::disconnectTasks, this,
-          &MainWindow::onAIDisconnectTasks);
-  l->addWidget(m_aiChat);
-  s->addWidget(m_aiPanel);
-}
-
 void MainWindow::setupVersionLabel() {
   m_versionLabel = new QLabel(APP_VERSION, centralWidget());
   m_versionLabel->setStyleSheet(
@@ -222,11 +173,10 @@ void MainWindow::resizeEvent(QResizeEvent *e) {
     m_liveBg->setGeometry(centralWidget()->rect());
   updateVersionPosition();
 }
+
 void MainWindow::updateVersionPosition() {
-  if (m_versionLabel) {
-    m_versionLabel->adjustSize();
-    m_versionLabel->move(15, centralWidget()->height() - 25);
-  }
+  if (m_versionLabel)
+    m_versionLabel->move(10, centralWidget()->height() - 20);
 }
 
 void MainWindow::refreshProjectList() {
@@ -238,58 +188,61 @@ void MainWindow::refreshProjectList() {
   }
 }
 
+void MainWindow::saveCurrentProject() {
+  if (m_currentProject.isEmpty())
+    return;
+  QJsonObject d;
+  d["canvas"] = m_canvas->getProjectData();
+  m_projects[m_currentProject] = d;
+  Storage::saveAllProjects(m_projects);
+}
+
 void MainWindow::onNewProject() {
   bool ok;
   QString n =
       QInputDialog::getText(this, "New", "Name:", QLineEdit::Normal, "", &ok);
-  if (ok && !n.isEmpty()) {
-    if (m_projects.contains(n))
-      return;
-    QJsonObject p;
-    p["nodes"] = QJsonArray();
-    p["connections"] = QJsonArray();
-    p["scale"] = 1.0;
-    p["offset_x"] = 0;
-    p["offset_y"] = 0;
-    m_projects[n] = p;
+  if (ok && !n.isEmpty() && !m_projects.contains(n)) {
+    saveCurrentProject();
+    m_projects[n] = QJsonObject();
     Storage::saveAllProjects(m_projects);
     refreshProjectList();
+    for (int i = 0; i < m_projectList->count(); ++i) {
+      if (m_projectList->item(i)->data(Qt::UserRole).toString() == n) {
+        m_projectList->setCurrentRow(i);
+        onProjectSelected(m_projectList->item(i));
+        break;
+      }
+    }
   }
 }
 
 void MainWindow::onProjectSelected(QListWidgetItem *i) {
-  if (!m_currentProject.isEmpty())
-    saveCurrentProject();
-  QString n = i->data(Qt::UserRole).toString();
-  m_currentProject = n;
-  if (m_projects.contains(n))
-    m_canvas->loadProjectData(m_projects[n].toObject());
-  m_aiChat->setProject(n);
-  m_aiChat->setTaskCounter(m_canvas->nodes().size());
-  updateStats();
-}
-
-void MainWindow::saveCurrentProject() {
-  if (!m_currentProject.isEmpty()) {
-    m_projects[m_currentProject] = m_canvas->getProjectData();
-    Storage::saveAllProjects(m_projects);
+  if (!i)
+    return;
+  saveCurrentProject();
+  m_currentProject = i->data(Qt::UserRole).toString();
+  if (m_projects.contains(m_currentProject)) {
+    QJsonObject d = m_projects[m_currentProject].toObject();
+    m_canvas->loadProjectData(d["canvas"].toObject());
   }
+  updateStats();
 }
 
 void MainWindow::onProjectContextMenu(const QPoint &p) {
   auto *i = m_projectList->itemAt(p);
   if (!i)
     return;
-  QMenu m(this);
-  m.setStyleSheet(
-      "QMenu { background: rgba(30,30,40,250); border: 1px solid "
-      "rgba(255,255,255,0.1); border-radius: 10px; color: #ffffff; padding: "
-      "5px; } QMenu::item:selected { background: rgba(217,0,255,0.3); }");
-  connect(m.addAction("Rename"), &QAction::triggered, this,
-          [this, i]() { renameProject(i); });
-  connect(m.addAction("Delete"), &QAction::triggered, this,
-          [this, i]() { deleteProject(i); });
-  m.exec(m_projectList->mapToGlobal(p));
+  QMenu m;
+  m.setStyleSheet("QMenu { background: #1a1a1e; color: #ffffff; border: 1px "
+                  "solid rgba(255,255,255,0.1); } "
+                  "QMenu::item:selected { background: rgba(217,0,255,0.3); }");
+  auto *r = m.addAction("Rename");
+  auto *d = m.addAction("Delete");
+  auto *a = m.exec(m_projectList->mapToGlobal(p));
+  if (a == r)
+    renameProject(i);
+  else if (a == d)
+    deleteProject(i);
 }
 
 void MainWindow::renameProject(QListWidgetItem *i) {
@@ -338,27 +291,6 @@ void MainWindow::updateZoomLabel(int p) {
   m_zoomLabelBtn->setText(QString("%1%").arg(p));
 }
 
-void MainWindow::exportTZ() {
-  if (m_canvas->nodes().isEmpty())
-    return;
-  QString t = "# TZ: " + m_currentProject + "\n\n";
-  int idx = 1;
-  for (auto *n : m_canvas->nodes())
-    t += QString("## %1. %2\n%3\n\n")
-             .arg(idx++)
-             .arg(n->title())
-             .arg(n->description());
-  QString path =
-      QFileDialog::getSaveFileName(this, "Save", "", "Markdown (*.md)");
-  if (!path.isEmpty()) {
-    QFile f(path);
-    if (f.open(QIODevice::WriteOnly)) {
-      QTextStream(&f) << t;
-      f.close();
-    }
-  }
-}
-
 void MainWindow::clearAll() {
   if (!m_currentProject.isEmpty() &&
       QMessageBox::Yes ==
@@ -371,72 +303,6 @@ void MainWindow::clearAll() {
 void MainWindow::closeEvent(QCloseEvent *e) {
   saveCurrentProject();
   e->accept();
-}
-
-void MainWindow::onAITaskCreated(const QString &t, const QString &d,
-                                 const QString &s, int x, int y) {
-  auto *n = m_canvas->addNode(x, y);
-  n->setTitle(t);
-  n->setDescription(d);
-  if (getStatuses().contains(s))
-    n->setStatus(s);
-  updateStats();
-}
-void MainWindow::onAITasksConnect(int f, int t) {
-  auto n = m_canvas->nodes();
-  if (f >= 0 && f < n.size() && t >= 0 && t < n.size())
-    m_canvas->addConnection(n[f], n[t]);
-}
-void MainWindow::onAITaskUpdateStatus(int idx, const QString &s) {
-  auto n = m_canvas->nodes();
-  if (idx >= 0 && idx < n.size()) {
-    n[idx]->setStatus(s);
-    updateStats();
-  }
-}
-void MainWindow::onAITaskUpdateDesc(int idx, const QString &d) {
-  auto n = m_canvas->nodes();
-  if (idx >= 0 && idx < n.size())
-    n[idx]->setDescription(d);
-}
-void MainWindow::onAITaskRename(int idx, const QString &t) {
-  auto n = m_canvas->nodes();
-  if (idx >= 0 && idx < n.size())
-    n[idx]->setTitle(t);
-}
-void MainWindow::onAITaskDelete(int idx) {
-  auto n = m_canvas->nodes();
-  if (idx >= 0 && idx < n.size()) {
-    m_canvas->removeNode(n[idx]);
-    updateStats();
-  }
-}
-void MainWindow::onAITasksDeleteMany(const QList<int> &ids) {
-  auto s = ids;
-  std::sort(s.begin(), s.end(), std::greater<int>());
-  for (int i : s)
-    if (i >= 0 && i < m_canvas->nodes().size())
-      m_canvas->removeNode(m_canvas->nodes()[i]);
-  updateStats();
-}
-void MainWindow::onAIClearAll() {
-  m_canvas->clearAll();
-  updateStats();
-}
-void MainWindow::onAIRequestTasks() {
-  QString i;
-  int idx = 1;
-  for (auto *n : m_canvas->nodes())
-    i += QString("%1. %2\n").arg(idx++).arg(n->title());
-  m_aiChat->setTasksInfo(i);
-}
-void MainWindow::onAIArrangeTasks(const QString &t) {
-  m_canvas->update();
-} // Placeholder
-void MainWindow::onAIDisconnectTasks(int f, int t) {
-  auto n = m_canvas->nodes();
-  if (f >= 0 && f < n.size() && t >= 0 && t < n.size())
-    m_canvas->removeConnection(n[f], n[t]);
 }
 
 } // namespace DevPlanner
