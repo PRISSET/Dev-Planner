@@ -1,153 +1,178 @@
-# Dev Planner
+<p align="center">
+  <img src="icon.iconset/icon_256x256.png" alt="Dev Planner Logo" width="128" height="128">
+</p>
 
-Визуальный планировщик задач с AI-ассистентом для управления проектами разработки.
+<h1 align="center">Dev Planner</h1>
 
-## Описание
+<p align="center">
+  <strong>🚀 AI-Powered Task & Project Planning Tool</strong>
+</p>
 
-Dev Planner — это десктопное приложение для визуального планирования и управления задачами в проектах. Приложение предоставляет интерактивный канвас для создания карточек задач, их связывания и организации, а также встроенного AI-ассистента для автоматизации рутинных операций.
+<p align="center">
+  <a href="https://github.com/prisset/Dev-Planner/releases/latest">
+    <img src="https://img.shields.io/github/v/release/prisset/Dev-Planner?style=for-the-badge&color=00ff9d" alt="Release">
+  </a>
+  <a href="https://github.com/prisset/Dev-Planner/actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/prisset/Dev-Planner/build.yml?style=for-the-badge&color=d900ff" alt="Build">
+  </a>
+  <a href="https://github.com/prisset/Dev-Planner/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/prisset/Dev-Planner?style=for-the-badge&color=00ffff" alt="License">
+  </a>
+</p>
 
-## Основные возможности
+<p align="center">
+  <a href="#-features">Features</a> •
+  <a href="#-installation">Installation</a> •
+  <a href="#-usage">Usage</a> •
+  <a href="#-ai-commands">AI Commands</a> •
+  <a href="#-building">Building</a>
+</p>
 
-- Визуальный канвас с карточками задач
-- Интерактивное создание и редактирование задач
-- Связывание задач для отображения зависимостей
-- Система статусов с цветовой индикацией
-- Управление несколькими проектами
-- AI-ассистент для автоматизации работы с задачами
-- Автоматическое сохранение изменений
-- Экспорт проектов в формате Markdown
-- Масштабирование и навигация по канвасу
-- Автоматическое расположение задач (сетка, дерево, круг и др.)
+---
 
-## Статусы задач
+## ✨ Features
 
-- Без статуса (серый)
-- Готово (зеленый)
-- В процессе (желтый)
-- Не сделано (красный)
-- Отменено (темно-серый)
+<table>
+<tr>
+<td width="50%">
 
-## AI-ассистент
+### 🎯 Visual Task Management
+- Create and organize tasks on an infinite canvas
+- Connect tasks with visual relationships
+- Drag and drop interface
+- Zoom and pan navigation
 
-Встроенный AI-ассистент на базе OpenRouter позволяет:
+</td>
+<td width="50%">
 
-- Создавать задачи голосовыми командами
-- Автоматически организовывать задачи
-- Изменять статусы и описания
-- Создавать связи между задачами
-- Применять шаблоны проектов
-- Удалять и редактировать задачи
+### 🤖 AI Co-Pilot
+- Natural language task creation
+- Bulk operations via AI
+- Smart task organization
+- Automated workflows
 
-Примеры команд:
-- "Создай 5 задач для веб-приложения"
-- "Сделай задачу 3 зеленой"
-- "Расположи задачи сеткой"
-- "Соедини задачи 1 и 2"
+</td>
+</tr>
+<tr>
+<td width="50%">
 
-## Требования
+### 📝 Note Mode
+- Quick notes without titles
+- Focus on content
+- Compact view
 
-- Python 3.8+
-- PyQt6 >= 6.4.0
-- requests >= 2.28.0
+</td>
+<td width="50%">
 
-## Установка
+### 💾 Project Management
+- Multiple projects support
+- Auto-save functionality
+- JSON export/import
+
+</td>
+</tr>
+</table>
+
+## 📥 Installation
+
+### Windows
+Download and run **`Dev.Planner.Setup.exe`** from the [latest release](https://github.com/prisset/Dev-Planner/releases/latest).
+
+### macOS
+Download **`Dev.Planner.macOS.dmg`** from the [latest release](https://github.com/prisset/Dev-Planner/releases/latest), open it and drag Dev Planner to Applications.
+
+## 🎮 Usage
+
+### Basic Controls
+| Action | Control |
+|--------|---------|
+| Create Task | Double-click on canvas |
+| Move Task | Drag with mouse |
+| Connect Tasks | Right-click → Connect, then click target |
+| Delete Task | Click × button |
+| Zoom | Mouse wheel or +/- buttons |
+| Pan | Middle mouse button or Shift+drag |
+
+### Status Colors
+- 🔴 **Todo** - Not started
+- 🟡 **Progress** - In progress  
+- 🟢 **Done** - Completed
+- ⚫ **None** - No status
+
+## 🤖 AI Commands
+
+The AI Co-Pilot understands natural language. Examples:
+
+```
+"Создай 5 задач для разработки сайта"
+"Сделай все задачи зелёными"
+"Соедини задачу 1 с задачей 3"
+"Удали задачи 2 и 4"
+"Очисти всё"
+```
+
+### Available Actions
+| Command | Description |
+|---------|-------------|
+| `create_task` | Create a single task |
+| `create_tasks_chain` | Create connected tasks |
+| `set_status` | Change task status |
+| `set_many_status` | Change multiple tasks status |
+| `connect` | Connect two tasks |
+| `connect_many` | Create multiple connections |
+| `rename` | Rename a task |
+| `delete` | Delete a task |
+| `clear_all` | Remove all tasks |
+
+## 🔧 Building
+
+### Requirements
+- Qt 6.6+
+- CMake 3.20+
+- C++17 compiler
+
+### Build Steps
 
 ```bash
-pip install -r req.txt
+cd cpp
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
 ```
 
-## Запуск
-
-### Из исходников
-
-```bash
-python main.py
+### Windows (MSVC)
+```powershell
+cd cpp
+mkdir build && cd build
+cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
+nmake
+windeployqt DevPlanner.exe
 ```
 
-### Готовое приложение
-
-Скачайте готовую сборку из раздела Releases:
-
-- macOS: `Dev Planner.dmg`
-- Другие платформы: соберите из исходников
-
-### Установка на macOS
-
-При открытии DMG-файла или запуске приложения macOS может показать ошибку "Файл повреждён" или "Невозможно открыть приложение". Это происходит из-за системы безопасности Gatekeeper.
-
-Для решения выполните в терминале:
-
-```bash
-# Снять карантин с DMG-файла перед открытием
-xattr -cr ~/Downloads/Dev.Planner.dmg
-
-# Или снять карантин с уже установленного приложения
-xattr -cr /Applications/Dev.Planner.app
-```
-
-После этого приложение запустится без проблем.
-
-## Управление
-
-### Канвас
-- Двойной клик — создать новую задачу
-- ПКМ на задаче — контекстное меню
-- Средняя кнопка мыши / Alt + ЛКМ — панорамирование
-- Cmd/Ctrl + скролл — масштабирование
-- Тачпад — жесты масштабирования
-
-### Задачи
-- Перетаскивание — перемещение задачи
-- ПКМ → "Соединить с..." — создание связи
-- ПКМ → "Статус" — изменение статуса
-- Клик на крестик — удаление задачи
-
-## Структура проекта
+## 📁 Project Structure
 
 ```
-dev-planner/
-├── main.py              # Точка входа
-├── req.txt              # Зависимости
+cpp/
 ├── src/
-│   ├── core/
-│   │   ├── config.py    # Конфигурация
-│   │   ├── storage.py   # Работа с данными
-│   │   └── task_node.py # Виджет задачи
-│   └── ui/
-│       ├── ai_chat.py   # AI-ассистент
-│       ├── canvas.py    # Канвас для задач
-│       ├── main_window.py # Главное окно
-│       └── widgets.py   # UI компоненты
-└── icon.iconset/        # Иконки приложения
+│   ├── ai/                 # AI action system
+│   │   ├── actions/        # Individual action handlers
+│   │   ├── ai_action.hpp   # Base action interface
+│   │   └── ai_action_registry.cpp
+│   ├── core/              # Core utilities
+│   └── ui/                # UI components
+│       ├── main_window.cpp
+│       ├── node_canvas.cpp
+│       ├── task_node.cpp
+│       └── ai_chat_panel.cpp
+└── CMakeLists.txt
 ```
 
-## Хранение данных
+## 📄 License
 
-Данные проектов сохраняются локально в:
-```
-~/.devchain_planner/
-├── projects.json        # Данные проектов
-└── contexts/            # Контексты AI-чата
-```
+MIT License - see [LICENSE](LICENSE) for details.
 
-## Лицензия
+---
 
-Проект распространяется как есть, без гарантий.
-
-## Сборка приложения
-
-Для создания standalone приложения используется PyInstaller:
-
-```bash
-pyinstaller "Dev Tool.spec"
-```
-
-Готовое приложение будет в папке `dist/`.
-
-## Версия
-
-beta v1.0.0
-
-## Разработка
-
-Репозиторий: https://github.com/PRISSET/Dev-Planner
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/prisset">prisset</a>
+</p>

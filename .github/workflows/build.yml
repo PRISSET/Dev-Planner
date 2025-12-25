@@ -1,4 +1,4 @@
-name: Build Dev Planner C++
+name: Build Dev Planner
 
 on:
   push:
@@ -26,6 +26,9 @@ jobs:
         with:
           arch: x64
       
+      - name: Install NSIS
+        run: choco install nsis -y
+      
       - name: Configure CMake
         run: |
           cd cpp
@@ -43,16 +46,23 @@ jobs:
           cd cpp/build
           windeployqt --release --no-translations DevPlanner.exe
       
-      - name: Create ZIP
+      - name: Create Installer
         run: |
           cd cpp/build
-          Compress-Archive -Path DevPlanner.exe,*.dll,platforms,styles,imageformats -DestinationPath Dev.Planner.Windows.zip
+          makensis /DVERSION="${{ github.ref_name }}" ../installer/windows.nsi
+      
+      - name: Rename installer
+        run: |
+          if (Test-Path "cpp/build/DevPlannerSetup.exe") {
+            Move-Item "cpp/build/DevPlannerSetup.exe" "cpp/build/Dev.Planner.Setup.exe"
+          }
       
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: Dev-Planner-Windows
-          path: cpp/build/Dev.Planner.Windows.zip
+          path: cpp/build/Dev.Planner.Setup.exe
+          if-no-files-found: error
 
   build-macos:
     runs-on: macos-latest
@@ -87,13 +97,13 @@ jobs:
       
       - name: Rename DMG
         run: |
-          mv cpp/build/DevPlanner.dmg cpp/build/Dev.Planner.dmg
+          mv cpp/build/DevPlanner.dmg cpp/build/Dev.Planner.macOS.dmg
       
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: Dev-Planner-macOS
-          path: cpp/build/Dev.Planner.dmg
+          path: cpp/build/Dev.Planner.macOS.dmg
 
   release:
     needs: [build-windows, build-macos]
@@ -112,10 +122,22 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            Dev-Planner-Windows/Dev.Planner.Windows.zip
-            Dev-Planner-macOS/Dev.Planner.dmg
+            Dev-Planner-Windows/Dev.Planner.Setup.exe
+            Dev-Planner-macOS/Dev.Planner.macOS.dmg
           draft: false
           prerelease: false
           generate_release_notes: true
+          body: |
+            ## 🚀 Dev Planner v${{ github.ref_name }}
+            
+            ### Downloads
+            - **Windows**: `Dev.Planner.Setup.exe` - Windows installer
+            - **macOS**: `Dev.Planner.macOS.dmg` - macOS disk image
+            
+            ### What's New
+            - AI Co-Pilot with modular action system
+            - Note mode for quick notes
+            - Improved status indicators
+            - New app icon
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

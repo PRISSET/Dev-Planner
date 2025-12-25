@@ -75,6 +75,7 @@ private:
   NodeCanvas *m_canvas = nullptr;
   AIChatPanel *m_aiChat = nullptr;
   ModernButton *m_zoomLabelBtn = nullptr;
+  ModernButton *m_noteModeBtn = nullptr;
   QMap<QString, QLabel *> m_statsLabels;
   QLabel *m_versionLabel = nullptr;
   GlassmorphismWidget *m_projectsPanel = nullptr;
@@ -83,6 +84,7 @@ private:
   QJsonObject m_projects;
   QString m_currentProject;
   QTimer *m_autosaveTimer = nullptr;
+  bool m_noteMode = false;
 };
 
 } // namespace DevPlanner

@@ -99,8 +99,17 @@ void MainWindow::setupToolbar(QVBoxLayout *layout) {
   connect(exp, &QPushButton::clicked, this, &MainWindow::exportTZ);
   auto *clr = new ModernButton("CLEAR", QColor(255, 0, 85, 100), this);
   connect(clr, &QPushButton::clicked, this, &MainWindow::clearAll);
+  m_noteModeBtn = new ModernButton("NOTE", QColor(0, 200, 150, 100), this);
+  m_noteModeBtn->setCheckable(true);
+  connect(m_noteModeBtn, &QPushButton::toggled, this, [this](bool checked) {
+    m_noteMode = checked;
+    m_noteModeBtn->setText(checked ? "NOTE ✓" : "NOTE");
+    if (m_canvas)
+      m_canvas->setNoteMode(checked);
+  });
   l->addWidget(exp);
   l->addWidget(clr);
+  l->addWidget(m_noteModeBtn);
   l->addStretch();
 
   for (auto it = getStatuses().begin(); it != getStatuses().end(); ++it) {
@@ -124,6 +133,16 @@ void MainWindow::setupContent(QVBoxLayout *layout) {
   setupProjectsPanel(s);
   m_canvas = new NodeCanvas(this);
   connect(m_canvas, &NodeCanvas::changed, this, &MainWindow::scheduleAutosave);
+  connect(m_canvas, &NodeCanvas::changed, this, [this]() {
+    QString ctx;
+    int idx = 1;
+    for (auto *n : m_canvas->nodes()) {
+      ctx +=
+          QString("%1. %2 [%3]\n").arg(idx++).arg(n->title()).arg(n->status());
+    }
+    m_aiChat->setTasksInfo(ctx);
+    m_aiChat->setTaskCounter(m_canvas->nodes().size());
+  });
   connect(m_canvas, &NodeCanvas::zoomChanged, this,
           &MainWindow::updateZoomLabel);
   s->addWidget(m_canvas);

@@ -1,8 +1,11 @@
+#include "ai/ai_action_registry.hpp"
 #include "ui/main_window.hpp"
 #include <QApplication>
 
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
+
+  DevPlanner::registerAllActions();
 
   // Set application metadata
   QApplication::setApplicationName("Dev Planner");

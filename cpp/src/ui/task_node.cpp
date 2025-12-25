@@ -31,7 +31,6 @@ void TaskNode::setupUI(const QString &title) {
   header->setSpacing(10);
 
   m_statusIndicator = new QLabel(this);
-  m_statusIndicator->setFixedSize(10, 10);
   updateStatusIndicator();
 
   m_titleEdit = new QLineEdit(title, this);
@@ -68,7 +67,18 @@ void TaskNode::setupUI(const QString &title) {
   m_descEdit->installEventFilter(this);
   m_descEdit->viewport()->installEventFilter(this);
 
-  layout->addLayout(header);
+  if (title.isEmpty()) {
+    m_titleEdit->hide();
+    layout->setContentsMargins(10, 8, 10, 8);
+    layout->setSpacing(4);
+    auto *miniHeader = new QHBoxLayout();
+    miniHeader->addWidget(m_statusIndicator);
+    miniHeader->addStretch();
+    miniHeader->addWidget(m_deleteBtn);
+    layout->addLayout(miniHeader);
+  } else {
+    layout->addLayout(header);
+  }
   layout->addWidget(m_descEdit, 1);
 }
 
@@ -89,7 +99,10 @@ void TaskNode::onDeleteClicked() { emit deleteRequested(this); }
 void TaskNode::updateStatusIndicator() {
   QString c = getStatuses()[m_status].color;
   m_statusIndicator->setStyleSheet(
-      QString("background-color: %1; border-radius: 5px;").arg(c));
+      QString("background-color: %1; border-radius: 6px; "
+              "min-width: 12px; max-width: 12px; "
+              "min-height: 12px; max-height: 12px;")
+          .arg(c));
 }
 
 void TaskNode::setStatus(const QString &s) {
@@ -147,6 +160,15 @@ void TaskNode::updateScale(qreal s) {
           .arg(qMax(static_cast<int>(20 * effectiveScale), 12)));
 
   m_statusIndicator->setFixedSize(indicatorSize, indicatorSize);
+  QString statusColor = getStatuses()[m_status].color;
+  int radius = indicatorSize / 2;
+  m_statusIndicator->setStyleSheet(
+      QString("background-color: %1; border-radius: %2px; "
+              "min-width: %3px; max-width: %3px; "
+              "min-height: %3px; max-height: %3px;")
+          .arg(statusColor)
+          .arg(radius)
+          .arg(indicatorSize));
 
   if (layout()) {
     layout()->setContentsMargins(margins, margins - 3, margins, margins - 3);

@@ -38,6 +38,10 @@ public:
   void removeNode(TaskNode *node, bool emitChanged = true);
   void clearAll();
 
+  // Note mode
+  void setNoteMode(bool enabled) { m_noteMode = enabled; }
+  bool noteMode() const { return m_noteMode; }
+
   // View transformation
   qreal scale() const { return m_scale; }
   QPointF offset() const { return m_offset; }
@@ -139,6 +143,7 @@ private:
   };
   QList<Blob> m_blobs;
   QTimer *m_blobTimer = nullptr;
+  bool m_noteMode = false;
 
   friend class ConnectionOverlay;
 };

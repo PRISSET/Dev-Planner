@@ -54,8 +54,10 @@ NodeCanvas::NodeCanvas(QWidget *parent) : QWidget(parent) {
 NodeCanvas::~NodeCanvas() { clearAll(); }
 
 TaskNode *NodeCanvas::addNode(qreal x, qreal y, bool emitChanged) {
-  TaskNode *node = new TaskNode(x, y, this, "New Task", this);
+  QString title = m_noteMode ? "" : "New Task";
+  TaskNode *node = new TaskNode(x, y, this, title, this);
   m_nodes.append(node);
+  node->updateScale(m_scale);
   updateNodePosition(node);
   connect(node, &TaskNode::changed, this, &NodeCanvas::onNodeChanged);
   connect(node, &TaskNode::deleteRequested, this,

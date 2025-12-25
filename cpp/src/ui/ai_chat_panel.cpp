@@ -1,4 +1,5 @@
 #include "ai_chat_panel.hpp"
+#include "../ai/ai_action_registry.hpp"
 #include "core/config.hpp"
 #include "core/storage.hpp"
 #include <QFrame>
@@ -7,6 +8,7 @@
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QScrollBar>
+#include <QSslError>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -16,25 +18,31 @@ const QString AIChatPanel::OPENROUTER_API_URL =
     "https://openrouter.ai/api/v1/chat/completions";
 
 const QString AIChatPanel::SYSTEM_PROMPT =
-    R"(Ты — AI-исполнитель Dev Planner. Твоя задача — НЕМЕДЛЕННО выполнять команды пользователя.
-ГЛАВНОЕ ПРАВИЛО: ВСЕГДА отвечай ТОЛЬКО JSON-командой! Никакого текста кроме JSON!
-ЦВЕТА ЗАДАЧ:
-- "жёлтый" = progress
-- "красный" = todo
-- "зелёный" = done
-- "серый" = none
-СОЗДАНИЕ:
+    R"(Ты — AI-ассистент Dev Planner. Помогай управлять задачами.
+
+ПРАВИЛА:
+1. Для ДЕЙСТВИЙ над задачами ВСЕГДА возвращай ТОЛЬКО чистый JSON без текста
+2. Для ВОПРОСОВ и советов отвечай текстом
+
+ДЕЙСТВИЯ (только JSON, без текста вокруг):
 {"action": "create_task", "title": "...", "description": "...", "status": "todo"}
-{"action": "create_tasks_chain", "tasks": [...], "connect": true}
-СТАТУСЫ:
-{"action": "set_status", "task": 1, "status": "progress"}
-СОЕДИНЕНИЯ:
+{"actions": [{"action": "create_task", "title": "...", "description": "...", "status": "todo"}, ...]}
+{"action": "set_status", "task": 1, "status": "done"}
+{"action": "set_many_status", "tasks": [1,2,3,4], "status": "done"}
 {"action": "connect", "from": 1, "to": 2}
-УДАЛЕНИЕ:
+{"action": "connect_many", "connections": [[1,2],[2,3]]}
+{"action": "rename", "task": 1, "title": "..."}
+{"action": "delete", "task": 1}
 {"action": "clear_all"}
-РАСПОЛОЖЕНИЕ:
-{"action": "arrange_grid"}
-{"action": "arrange_tree"})";
+{"action": "arrange_tree"}
+
+СТАТУСЫ: todo, progress, done, none
+Нумерация задач с 1.
+
+ПРИМЕРЫ:
+"сделай все задачи готовыми" → {"action": "set_many_status", "tasks": [1,2,3,4], "status": "done"}
+"создай 3 задачи" → {"actions": [{"action": "create_task", "title": "Задача 1", "description": "", "status": "todo"}, ...]}
+"что такое agile?" → Отвечай текстом)";
 
 ChatMessage::ChatMessage(const QString &text, bool isUser, QWidget *parent)
     : QFrame(parent) {
@@ -74,6 +82,14 @@ AIChatPanel::AIChatPanel(QWidget *parent) : GlassmorphismWidget(parent) {
   m_networkManager = new QNetworkAccessManager(this);
   connect(m_networkManager, &QNetworkAccessManager::finished, this,
           &AIChatPanel::onNetworkReply);
+
+#ifdef Q_OS_WIN
+  connect(m_networkManager, &QNetworkAccessManager::sslErrors, this,
+          [](QNetworkReply *reply, const QList<QSslError> &errors) {
+            reply->ignoreSslErrors();
+          });
+#endif
+
   m_apiKey = Storage::loadApiKey();
   m_models = Storage::loadModels(m_currentModel);
 
@@ -178,9 +194,7 @@ void AIChatPanel::setProject(const QString &projectName) {
   }
 }
 
-void AIChatPanel::setTasksInfo(const QString &info) {
-  addMessageUI(info, false);
-}
+void AIChatPanel::setTasksInfo(const QString &info) { m_tasksContext = info; }
 void AIChatPanel::clearChatUI() {
   while (m_messagesLayout->count()) {
     auto *i = m_messagesLayout->takeAt(0);
@@ -212,9 +226,16 @@ void AIChatPanel::sendMessage() {
   if (text.isEmpty() || m_apiKey.isEmpty())
     return;
   addMessageUI(text, true);
+
+  QString fullContent = text;
+  if (!m_tasksContext.isEmpty()) {
+    fullContent =
+        QString("ТЕКУЩИЕ ЗАДАЧИ:\n%1\n\nЗАПРОС: %2").arg(m_tasksContext, text);
+  }
+
   QJsonObject msg;
   msg["role"] = "user";
-  msg["content"] = text;
+  msg["content"] = fullContent;
   m_messages.append(msg);
   m_inputField->clear();
   m_inputField->setEnabled(false);
@@ -232,17 +253,28 @@ void AIChatPanel::onNetworkReply(QNetworkReply *reply) {
   m_inputField->setEnabled(true);
   m_sendBtn->setEnabled(true);
   if (reply->error() == QNetworkReply::NoError) {
-    QString content = QJsonDocument::fromJson(reply->readAll())
-                          .object()["choices"]
-                          .toArray()[0]
-                          .toObject()["message"]
-                          .toObject()["content"]
-                          .toString();
-    QJsonObject msg;
-    msg["role"] = "assistant";
-    msg["content"] = content;
-    m_messages.append(msg);
-    processAIResponse(content);
+    QByteArray responseData = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(responseData);
+    if (doc.isObject() && doc.object().contains("choices")) {
+      QString content = doc.object()["choices"]
+                            .toArray()[0]
+                            .toObject()["message"]
+                            .toObject()["content"]
+                            .toString();
+      QJsonObject msg;
+      msg["role"] = "assistant";
+      msg["content"] = content;
+      m_messages.append(msg);
+      processAIResponse(content);
+    } else if (doc.object().contains("error")) {
+      QString errMsg = doc.object()["error"].toObject()["message"].toString();
+      addMessageUI("❌ API Error: " + errMsg, false);
+    } else {
+      addMessageUI("❌ Неверный ответ от API", false);
+    }
+  } else {
+    QString errorStr = reply->errorString();
+    addMessageUI("❌ Ошибка сети: " + errorStr, false);
   }
   reply->deleteLater();
 }
@@ -252,21 +284,51 @@ void AIChatPanel::processAIResponse(const QString &content) {
   QStringList results;
   for (const auto &obj : objects) {
     if (obj.contains("actions")) {
-      for (const auto &a : obj["actions"].toArray())
-        results.append(executeAction(a.toObject()));
-    } else
-      results.append(executeAction(obj));
+      for (const auto &a : obj["actions"].toArray()) {
+        QString r = executeAction(a.toObject());
+        if (!r.isEmpty())
+          results.append(r);
+      }
+    } else {
+      QString r = executeAction(obj);
+      if (!r.isEmpty())
+        results.append(r);
+    }
   }
-  addMessageUI(results.isEmpty() ? cleanJsonFromText(content)
-                                 : "✓ " + results.join("\n✓ "),
-               false);
+
+  QString textPart = cleanJsonFromText(content);
+  QString display;
+
+  if (!textPart.isEmpty() && textPart != "Готово") {
+    display = textPart;
+    if (!results.isEmpty()) {
+      display += "\n\n" + results.join("\n");
+    }
+  } else if (!results.isEmpty()) {
+    display = results.join("\n");
+  } else {
+    display = content;
+  }
+
+  addMessageUI(display, false);
 }
 
 QString AIChatPanel::formatAIMessage(const QString &content) { return content; }
 QString AIChatPanel::cleanJsonFromText(const QString &text) {
-  QString c = text;
-  c.replace(QRegularExpression(R"(\{[^{}]*\})"), "");
-  return c.simplified().isEmpty() ? "Готово" : c;
+  QString result;
+  int depth = 0;
+  for (int i = 0; i < text.length(); ++i) {
+    QChar c = text[i];
+    if (c == '{') {
+      depth++;
+    } else if (c == '}') {
+      depth--;
+    } else if (depth == 0) {
+      result += c;
+    }
+  }
+  result = result.simplified();
+  return result.isEmpty() ? "" : result;
 }
 
 QList<QJsonObject> AIChatPanel::extractAllJson(const QString &text) {
@@ -294,86 +356,46 @@ QList<QJsonObject> AIChatPanel::extractAllJson(const QString &text) {
 }
 
 QString AIChatPanel::executeAction(const QJsonObject &data) {
-  QString a = data["action"].toString();
-  if (a == "create_task") {
-    auto pos = getTaskPosition();
-    emit taskCreated(data["title"].toString(), data["description"].toString(),
-                     data["status"].toString("todo"), pos.first, pos.second);
-    return QString("✓ %1").arg(data["title"].toString());
-  } else if (a == "create_tasks_chain") {
-    QJsonArray tasks = data["tasks"].toArray();
-    bool doConnect = data["connect"].toBool(true);
-    int startIdx = m_taskCounter;
-    for (const auto &tv : tasks) {
-      QJsonObject t = tv.toObject();
-      auto pos = getTaskPosition();
-      emit taskCreated(t["title"].toString(), t["description"].toString(),
-                       t["status"].toString("todo"), pos.first, pos.second);
-    }
-    if (doConnect && tasks.size() > 1) {
-      for (int i = 0; i < tasks.size() - 1; ++i) {
-        emit tasksConnect(startIdx + i, startIdx + i + 1);
-      }
-    }
-    return QString("✓ Создано %1 задач").arg(tasks.size());
-  } else if (a == "connect") {
-    emit tasksConnect(data["from"].toInt() - 1, data["to"].toInt() - 1);
-    return QString("✓ Соединено %1 → %2")
-        .arg(data["from"].toInt())
-        .arg(data["to"].toInt());
-  } else if (a == "connect_many") {
-    QJsonArray conns = data["connections"].toArray();
-    for (const auto &c : conns) {
-      QJsonArray pair = c.toArray();
-      if (pair.size() >= 2) {
-        emit tasksConnect(pair[0].toInt() - 1, pair[1].toInt() - 1);
-      }
-    }
-    return QString("✓ Соединено %1 связей").arg(conns.size());
-  } else if (a == "disconnect") {
-    emit disconnectTasks(data["from"].toInt() - 1, data["to"].toInt() - 1);
-    return QString("✓ Разъединено");
-  } else if (a == "set_status") {
-    emit taskUpdateStatus(data["task"].toInt() - 1, data["status"].toString());
-    return QString("✓ Статус → %1").arg(data["status"].toString());
-  } else if (a == "set_many_status") {
-    QString status = data["status"].toString();
-    for (const auto &t : data["tasks"].toArray()) {
-      emit taskUpdateStatus(t.toInt() - 1, status);
-    }
-    return QString("✓ Статус %1 задач → %2")
-        .arg(data["tasks"].toArray().size())
-        .arg(status);
-  } else if (a == "rename") {
-    emit taskRename(data["task"].toInt() - 1, data["title"].toString());
-    return QString("✓ Переименовано");
-  } else if (a == "set_description") {
-    emit taskUpdateDesc(data["task"].toInt() - 1,
-                        data["description"].toString());
-    return QString("✓ Описание обновлено");
-  } else if (a == "delete") {
-    emit taskDelete(data["task"].toInt() - 1);
-    return QString("✓ Удалено");
-  } else if (a == "delete_many") {
-    QList<int> ids;
-    for (const auto &t : data["tasks"].toArray())
-      ids.append(t.toInt() - 1);
-    emit tasksDeleteMany(ids);
-    return QString("✓ Удалено %1").arg(ids.size());
-  } else if (a == "clear_all") {
-    emit clearAllTasks();
-    m_taskCounter = 0;
-    return "✓ Очищено";
-  } else if (a == "get_tasks") {
-    emit requestTasks();
-    return "✓ Список задач";
-  } else if (a.startsWith("arrange_")) {
-    emit arrangeTasks(a.mid(8));
-    return QString("✓ Расставлено: %1").arg(a.mid(8));
-  } else if (!a.isEmpty()) {
-    return QString("⚠ Неизвестное действие: %1").arg(a);
-  }
-  return "";
+  QString actionName = data["action"].toString();
+  if (actionName.isEmpty())
+    return "";
+
+  ActionContext ctx;
+
+  ctx.createTask = [this](const QString &title, const QString &desc,
+                          const QString &status, int x, int y) {
+    emit taskCreated(title, desc, status, x, y);
+  };
+
+  ctx.connectTasks = [this](int from, int to) { emit tasksConnect(from, to); };
+
+  ctx.disconnectTasks = [this](int from, int to) {
+    emit disconnectTasks(from, to);
+  };
+
+  ctx.setStatus = [this](int idx, const QString &status) {
+    emit taskUpdateStatus(idx, status);
+  };
+
+  ctx.setTitle = [this](int idx, const QString &title) {
+    emit taskRename(idx, title);
+  };
+
+  ctx.setDescription = [this](int idx, const QString &desc) {
+    emit taskUpdateDesc(idx, desc);
+  };
+
+  ctx.deleteTask = [this](int idx) { emit taskDelete(idx); };
+
+  ctx.clearAll = [this]() { emit clearAllTasks(); };
+
+  ctx.arrange = [this](const QString &type) { emit arrangeTasks(type); };
+
+  ctx.getTaskCount = [this]() -> int { return m_taskCounter; };
+
+  ctx.getPositionCounter = [this]() -> int & { return m_taskCounter; };
+
+  return AIActionRegistry::instance().execute(actionName, data, ctx);
 }
 
 QString AIChatPanel::describeAction(const QJsonObject &data) { return ""; }

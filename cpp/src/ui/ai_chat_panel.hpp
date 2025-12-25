@@ -83,6 +83,7 @@ private:
   QJsonArray m_messages;
   QString m_currentProject;
   int m_taskCounter = 0;
+  QString m_tasksContext;
 
   QVBoxLayout *m_messagesLayout;
   QWidget *m_messagesWidget;
