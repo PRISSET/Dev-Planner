@@ -79,10 +79,28 @@
 ## 📥 Installation
 
 ### Windows
-Download and run **`Dev.Planner.Setup.exe`** from the [latest release](https://github.com/prisset/Dev-Planner/releases/latest).
+
+1. Download **`Dev.Planner.Setup.exe`** from the [latest release](https://github.com/prisset/Dev-Planner/releases/latest)
+2. Run the installer
+3. Follow the installation wizard
+4. Launch from Start Menu or Desktop shortcut
 
 ### macOS
-Download **`Dev.Planner.macOS.dmg`** from the [latest release](https://github.com/prisset/Dev-Planner/releases/latest), open it and drag Dev Planner to Applications.
+
+1. Download **`Dev.Planner.macOS.dmg`** from the [latest release](https://github.com/prisset/Dev-Planner/releases/latest)
+
+2. **Remove quarantine** (required for unsigned apps):
+   ```bash
+   xattr -cr ~/Downloads/Dev.Planner.macOS.dmg
+   ```
+
+3. Open the DMG file
+
+4. Drag **Dev Planner** to **Applications**
+
+5. **First launch**: Right-click → Open → Open
+
+> ⚠️ **Note**: The app is not signed with Apple Developer certificate. macOS will show a warning on first launch. Use right-click → Open to bypass Gatekeeper.
 
 ## 🎮 Usage
 
