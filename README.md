@@ -9,6 +9,11 @@
 </p>
 
 <p align="center">
+  <a href="README.md">🇬🇧 English</a> •
+  <a href="README.ru.md">🇷🇺 Русский</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/prisset/Dev-Planner/releases/latest">
     <img src="https://img.shields.io/github/v/release/prisset/Dev-Planner?style=for-the-badge&color=00ff9d" alt="Release">
   </a>
@@ -104,11 +109,11 @@ Download **`Dev.Planner.macOS.dmg`** from the [latest release](https://github.co
 The AI Co-Pilot understands natural language. Examples:
 
 ```
-"Создай 5 задач для разработки сайта"
-"Сделай все задачи зелёными"
-"Соедини задачу 1 с задачей 3"
-"Удали задачи 2 и 4"
-"Очисти всё"
+"Create 5 tasks for website development"
+"Make all tasks green"
+"Connect task 1 to task 3"
+"Delete tasks 2 and 4"
+"Clear everything"
 ```
 
 ### Available Actions
