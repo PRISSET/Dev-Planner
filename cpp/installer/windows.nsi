@@ -5,7 +5,6 @@ OutFile "DevPlannerSetup.exe"
 InstallDir "$PROGRAMFILES64\Dev Planner"
 RequestExecutionLevel admin
 
-!define MUI_ICON "..\..\icon.iconset\icon_256x256.png"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN "$INSTDIR\DevPlanner.exe"
 
