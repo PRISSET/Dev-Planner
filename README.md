@@ -5,7 +5,7 @@
 <h1 align="center">Dev Planner</h1>
 
 <p align="center">
-  <strong>🚀 AI-Powered Task & Project Planning Tool</strong>
+  <strong>🚀 Visual Task & Project Planning Tool</strong>
 </p>
 
 <p align="center">
@@ -29,7 +29,6 @@
   <a href="#-features">Features</a> •
   <a href="#-installation">Installation</a> •
   <a href="#-usage">Usage</a> •
-  <a href="#-ai-commands">AI Commands</a> •
   <a href="#-building">Building</a>
 </p>
 
@@ -50,29 +49,28 @@
 </td>
 <td width="50%">
 
-### 🤖 AI Co-Pilot
-- Natural language task creation
-- Bulk operations via AI
-- Smart task organization
-- Automated workflows
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
 ### 📝 Note Mode
 - Quick notes without titles
 - Focus on content
 - Compact view
 
 </td>
+</tr>
+<tr>
 <td width="50%">
 
 ### 💾 Project Management
 - Multiple projects support
 - Auto-save functionality
 - JSON export/import
+
+</td>
+<td width="50%">
+
+### 🎨 Modern Design
+- Glassmorphism UI
+- Dark theme
+- Smooth animations
 
 </td>
 </tr>
@@ -104,31 +102,6 @@ Download **`Dev.Planner.macOS.dmg`** from the [latest release](https://github.co
 - 🟢 **Done** - Completed
 - ⚫ **None** - No status
 
-## 🤖 AI Commands
-
-The AI Co-Pilot understands natural language. Examples:
-
-```
-"Create 5 tasks for website development"
-"Make all tasks green"
-"Connect task 1 to task 3"
-"Delete tasks 2 and 4"
-"Clear everything"
-```
-
-### Available Actions
-| Command | Description |
-|---------|-------------|
-| `create_task` | Create a single task |
-| `create_tasks_chain` | Create connected tasks |
-| `set_status` | Change task status |
-| `set_many_status` | Change multiple tasks status |
-| `connect` | Connect two tasks |
-| `connect_many` | Create multiple connections |
-| `rename` | Rename a task |
-| `delete` | Delete a task |
-| `clear_all` | Remove all tasks |
-
 ## 🔧 Building
 
 ### Requirements
@@ -152,24 +125,6 @@ mkdir build && cd build
 cmake .. -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
 nmake
 windeployqt DevPlanner.exe
-```
-
-## 📁 Project Structure
-
-```
-cpp/
-├── src/
-│   ├── ai/                 # AI action system
-│   │   ├── actions/        # Individual action handlers
-│   │   ├── ai_action.hpp   # Base action interface
-│   │   └── ai_action_registry.cpp
-│   ├── core/              # Core utilities
-│   └── ui/                # UI components
-│       ├── main_window.cpp
-│       ├── node_canvas.cpp
-│       ├── task_node.cpp
-│       └── ai_chat_panel.cpp
-└── CMakeLists.txt
 ```
 
 ## 📄 License
