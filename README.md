@@ -1,25 +1,14 @@
-<p align="center">
-  <img src="icon.iconset/icon_256x256.png" alt="Dev Planner Logo" width="128" height="128">
-</p>
+# Dev Planner
 
-<h1 align="center">Dev Planner</h1>
+**Visual Task & Project Planning Tool**
 
-<p align="center">
-  <strong>Visual Task & Project Planning Tool</strong>
-</p>
-
-<p align="center">
-  <a href="README.md">English</a> •
-  <a href="README.ru.md">Русский</a>
-</p>
+[English](README.md) • [Русский](README.ru.md)
 
 ---
 
 ## Screenshots
 
-<p align="center">
-  <img src="images/image.png" alt="Dev Planner Screenshot" width="100%">
-</p>
+![Dev Planner Screenshot](images/image.png)
 
 ## Features
 
@@ -110,6 +99,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/prisset">prisset</a>
-</p>
+Made by [prisset](https://github.com/prisset)

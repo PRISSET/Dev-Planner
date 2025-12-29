@@ -1,0 +1,4 @@
+*.md linguist-detectable=false
+*.md linguist-documentation=true
+*.hpp linguist-detectable=true
+*.cpp linguist-detectable=true

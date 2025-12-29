@@ -1,25 +1,14 @@
-<p align="center">
-  <img src="icon.iconset/icon_256x256.png" alt="Dev Planner Лого" width="128" height="128">
-</p>
+# Dev Planner
 
-<h1 align="center">Dev Planner</h1>
+**Визуальный инструмент планирования задач и проектов**
 
-<p align="center">
-  <strong>Визуальный инструмент планирования задач и проектов</strong>
-</p>
-
-<p align="center">
-  <a href="README.md">English</a> •
-  <a href="README.ru.md">Русский</a>
-</p>
+[English](README.md) • [Русский](README.ru.md)
 
 ---
 
 ## Скриншоты
 
-<p align="center">
-  <img src="images/image.png" alt="Dev Planner Скриншот" width="100%">
-</p>
+![Dev Planner Скриншот](images/image.png)
 
 ## Возможности
 
@@ -110,6 +99,4 @@ MIT License - см. [LICENSE](LICENSE) для деталей.
 
 ---
 
-<p align="center">
-  Сделано с ❤️ <a href="https://github.com/prisset">prisset</a>
-</p>
+Сделано [prisset](https://github.com/prisset)
